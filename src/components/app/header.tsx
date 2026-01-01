@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -47,13 +48,14 @@ export function AppHeader() {
   const router = useRouter();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <Link href="/" className="flex items-center gap-2">
             <FenrirLogo />
             <span className="font-bold">fenrirstudy</span>
         </Link>
         <div className="flex flex-1 items-center justify-end space-x-2">
+           <ThemeToggle />
           <nav className="flex items-center space-x-1">
             {loading ? (
                 <div></div> // Or a skeleton loader
@@ -65,7 +67,6 @@ export function AppHeader() {
               </Button>
             )}
           </nav>
-           <ThemeToggle />
         </div>
       </div>
     </header>

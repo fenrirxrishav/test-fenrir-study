@@ -1,3 +1,4 @@
+
 import Timer from '@/components/app/timer/timer';
 
 export default function Home() {

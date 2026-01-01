@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Inter } from 'next/font/google';
@@ -35,9 +36,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseProvider>
-            <div className="relative flex h-dvh flex-col">
+            <div className="relative flex min-h-dvh flex-col">
               <AppHeader />
-              <main className="flex-1 overflow-y-auto">
+              <main className="flex-1 pb-16 md:pb-0">
                 {children}
               </main>
               <BottomNav />

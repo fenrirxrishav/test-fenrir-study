@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -103,6 +104,13 @@ export default function Timer() {
       });
       return;
     }
+    if (!user) {
+        toast({
+            title: "You're not logged in",
+            description: 'Your session will not be saved. Log in to track your progress.',
+            action: <Button onClick={() => router.push('/login')}>Login</Button>
+        });
+    }
     start();
   };
 
@@ -150,9 +158,9 @@ export default function Timer() {
 
   return (
     <>
-      <div className="flex h-full w-full flex-col items-center justify-between pb-16 md:pb-0">
+      <div className="flex h-full w-full flex-col items-center justify-between">
         
-        <div className="w-full flex justify-end items-center -mt-4">
+        <div className="w-full flex justify-end items-center absolute top-4 right-4">
              <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)}>
                 <Palette />
             </Button>
