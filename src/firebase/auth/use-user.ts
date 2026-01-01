@@ -3,15 +3,22 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, firestore } from '../config';
+import { useAuth, useFirestore } from '../provider';
 import { usePathname } from 'next/navigation';
 
 export function useUser() {
+  const auth = useAuth();
+  const firestore = useFirestore();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
 
   useEffect(() => {
+    if (!auth || !firestore) {
+      setLoading(false);
+      return;
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         setUser(authUser);
@@ -30,14 +37,13 @@ export function useUser() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth, firestore]);
   
-  // Invalidate user session on sign out
   useEffect(() => {
-    if(user && pathname.startsWith('/sign-out')) {
+    if(user && pathname.startsWith('/sign-out') && auth) {
       auth.signOut();
     }
-  }, [pathname, user])
+  }, [pathname, user, auth]);
 
   return { user, loading };
 }

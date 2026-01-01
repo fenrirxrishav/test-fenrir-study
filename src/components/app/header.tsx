@@ -1,8 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase';
-import { auth } from '@/firebase/config';
+import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { UserNav } from './user-nav';
@@ -45,9 +44,11 @@ export function FenrirLogo() {
 
 export function AppHeader() {
   const { user, loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push('/');
   };
