@@ -22,9 +22,10 @@
         "color": { "type": "string", "description": "A hex color code for the subject." },
         "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "The priority of the subject." },
         "archived": { "type": "boolean", "description": "Whether the subject is archived." },
-        "userId": { "type": "string", "description": "The ID of the user who owns this subject." }
+        "userId": { "type": "string", "description": "The ID of the user who owns this subject." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp when the subject was created." }
       },
-      "required": ["name", "color", "archived", "userId"]
+      "required": ["name", "color", "archived", "userId", "createdAt"]
     },
     "Session": {
       "title": "Session",

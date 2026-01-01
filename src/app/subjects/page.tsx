@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Subject } from "@/lib/definitions";
 import { useUser, useCollection, useFirestore } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { collection, query, where, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { AddSubjectDialog } from "@/components/app/timer/add-subject-dialog";
 import { addDoc } from "firebase/firestore";
 
@@ -29,13 +29,14 @@ export default function SubjectsPage() {
         }
     }, [user, userLoading, router]);
 
-    const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId'>) => {
-        if (!user) return;
+    const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId' | 'createdAt'>) => {
+        if (!user || !firestore) return;
         try {
             await addDoc(collection(firestore, "subjects"), {
                 ...newSubject,
                 userId: user.uid,
                 archived: false,
+                createdAt: serverTimestamp(),
             });
             setAddSubjectOpen(false);
         } catch (e) {
@@ -44,6 +45,7 @@ export default function SubjectsPage() {
     };
     
     const toggleArchive = async (subject: Subject) => {
+        if(!firestore) return;
         const subjectRef = doc(firestore, "subjects", subject.id);
         await updateDoc(subjectRef, {
             archived: !subject.archived
@@ -51,7 +53,7 @@ export default function SubjectsPage() {
     };
 
     if (userLoading || subjectsLoading || !user) {
-        return <div>Loading...</div>
+        return <div className="container mx-auto p-4 md:p-8">Loading...</div>
     }
 
     return (

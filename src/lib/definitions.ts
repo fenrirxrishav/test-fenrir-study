@@ -5,6 +5,7 @@ export type Subject = {
   color: string;
   priority?: 'low' | 'medium' | 'high';
   archived: boolean;
+  createdAt: string; // ISO string
 };
 
 export type Session = {

@@ -19,7 +19,7 @@ const colors = ["#3498DB", "#2ECC71", "#F1C40F", "#E74C3C", "#9B59B6", "#1ABC9C"
 interface AddSubjectDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onAddSubject: (subject: Omit<Subject, 'id' | 'archived'>) => void;
+  onAddSubject: (subject: Omit<Subject, 'id' | 'archived' | 'userId' | 'createdAt'>) => void;
 }
 
 export function AddSubjectDialog({ isOpen, onOpenChange, onAddSubject }: AddSubjectDialogProps) {
@@ -29,6 +29,7 @@ export function AddSubjectDialog({ isOpen, onOpenChange, onAddSubject }: AddSubj
   const handleSubmit = () => {
     if (name.trim()) {
       onAddSubject({ name, color: selectedColor });
+      onOpenChange(false);
       setName('');
       setSelectedColor(colors[0]);
     }

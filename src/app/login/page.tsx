@@ -33,24 +33,22 @@ export default function LoginPage() {
             });
             router.push('/dashboard');
         } catch (error: any) {
-            console.error("Error during sign-in:", error);
-            let description = "Could not sign in with Google. Please try again.";
+            // Don't show an error toast if the user closes the popup
             if (error.code === 'auth/popup-closed-by-user') {
-                description = "Sign-in was cancelled. Please try again.";
-            } else if (error.message) {
-                description = error.message;
+                return;
             }
 
+            console.error("Error during sign-in:", error);
             toast({
                 title: "Uh oh! Something went wrong.",
-                description: description,
+                description: error.message || "Could not sign in with Google. Please try again.",
                 variant: "destructive",
             });
         }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-10rem)]">
+        <div className="flex h-full items-center justify-center">
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Welcome Back!</CardTitle>
