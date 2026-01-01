@@ -34,7 +34,7 @@ export default function Timer() {
   const router = useRouter();
 
   const [mode, setMode] = useState<TimerMode>('pomodoro');
-  const [layout, setLayout] = useState<LayoutMode>('side');
+  const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [customDuration, setCustomDuration] = useState(modeSettings.pomodoro.defaultDuration / 60);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
@@ -222,10 +222,11 @@ export default function Timer() {
 
   return (
     <>
-        <div className={cn("relative flex h-full w-full flex-col items-center justify-center gap-8 md:flex-row", {
-            "flex-col": layout === 'bottom'
+        <div className={cn("relative flex h-full w-full flex-col items-center justify-center gap-8 md:gap-12 p-4", {
+            "md:flex-row": layout === 'side',
+            "md:flex-col": layout === 'bottom'
         })}>
-            <div className="absolute top-0 right-0 flex items-center">
+            <div className="absolute top-4 right-4 flex items-center">
                 <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)} className="hidden md:inline-flex">
                     <Palette />
                 </Button>
@@ -236,8 +237,8 @@ export default function Timer() {
         
             <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} isActive={isActive}/>
             
-            <div className={cn("flex w-full items-center justify-center md:w-1/3", {
-                "w-full": layout === 'bottom'
+            <div className={cn("flex w-full items-center justify-center md:w-auto", {
+                "md:max-w-sm": layout === 'side'
             })}>
                {controlPanel}
             </div>

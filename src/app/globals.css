@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, [data-theme="default"] {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -31,7 +31,7 @@
     --chart-5: 27 87% 67%;
   }
 
-  .dark {
+  .dark:root, .dark[data-theme="default"] {
     --background: 224 71% 4%;
     --foreground: 210 40% 98%;
     --card: 224 71% 4%;
@@ -51,6 +51,58 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 215 85% 55%;
+  }
+
+  [data-theme="forest"] {
+    --primary: 158 64% 52%;
+    --background: 120 60% 97%;
+    --accent: 158 24% 88%;
+    --card: 120 60% 97%;
+  }
+  .dark[data-theme="forest"] {
+    --primary: 158 64% 52%;
+    --background: 160 50% 5%;
+    --accent: 158 34% 15%;
+    --card: 160 50% 5%;
+  }
+
+  [data-theme="ocean"] {
+    --primary: 205 90% 55%;
+    --background: 210 100% 98%;
+    --accent: 205 50% 92%;
+    --card: 210 100% 98%;
+  }
+  .dark[data-theme="ocean"] {
+    --primary: 205 90% 55%;
+    --background: 220 60% 6%;
+    --accent: 215 40% 16%;
+    --card: 220 60% 6%;
+  }
+
+  [data-theme="sunset"] {
+    --primary: 20 90% 60%;
+    --background: 30 100% 97%;
+    --accent: 25 80% 90%;
+    --card: 30 100% 97%;
+  }
+  .dark[data-theme="sunset"] {
+    --primary: 20 90% 60%;
+    --background: 20 40% 5%;
+    --accent: 20 30% 15%;
+    --card: 20 40% 5%;
+  }
+
+  [data-theme="matrix"] {
+    --primary: 130 100% 40%;
+    --background: 0 0% 95%;
+    --accent: 0 0% 80%;
+    --card: 0 0% 95%;
+  }
+  .dark[data-theme="matrix"] {
+    --primary: 130 100% 50%;
+    --background: 0 0% 2%;
+    --accent: 130 50% 10%;
+    --card: 0 0% 2%;
   }
 }
 
