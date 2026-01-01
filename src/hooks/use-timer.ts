@@ -22,10 +22,12 @@ export function useTimer({
   const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Reset timer when initial duration changes (e.g., mode switch)
-    setTime(initialDuration);
-    setDuration(initialDuration);
-  }, [initialDuration, timerType]);
+    // Reset timer state when the key properties change, but only if not active
+    if (!isActive) {
+        setTime(initialDuration);
+        setDuration(initialDuration);
+    }
+  }, [initialDuration, timerType, isActive]);
   
   useEffect(() => {
     if (isActive && !isPaused) {
@@ -74,14 +76,16 @@ export function useTimer({
   const reset = useCallback((newDuration?: number) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     
+    // Only trigger onEnd if the timer was actually running and some time has passed
     if (isActive) {
         const studiedDuration = timerType === 'countdown' ? duration - time : time;
-        if (studiedDuration > 0) {
+        // Only save if more than a few seconds have passed to avoid saving empty sessions
+        if (studiedDuration > 5) {
             onEnd({ duration: studiedDuration, pauseCount, startTime: startTimeRef.current });
         }
     }
 
-    const finalDuration = newDuration ?? (timerType === 'countdown' ? initialDuration : 0);
+    const finalDuration = newDuration !== undefined ? newDuration : initialDuration;
 
     setIsActive(false);
     setIsPaused(false);

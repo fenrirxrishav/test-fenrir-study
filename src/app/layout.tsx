@@ -35,9 +35,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseProvider>
-            <div className="relative flex min-h-screen flex-col">
+            <div className="relative flex h-screen flex-col">
               <AppHeader />
-              <main className="flex-1 overflow-y-auto pb-24">{children}</main>
+              <main className="flex-1 flex flex-col items-center justify-center overflow-hidden">
+                {children}
+              </main>
               <BottomNav />
             </div>
             <Toaster />

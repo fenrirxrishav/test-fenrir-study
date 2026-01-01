@@ -5,7 +5,6 @@ import { useTimer } from '@/hooks/use-timer';
 import { TimerDisplay } from './timer-display';
 import { TimerControls } from './timer-controls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Subject } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
@@ -16,12 +15,13 @@ import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { addDoc, collection, serverTimestamp, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 
-const modeSettings = {
-  pomodoro: { duration: 25 * 60, label: 'Pomodoro' },
-  stopwatch: { duration: 0, label: 'Stopwatch' },
+const modeSettings: { [key in TimerMode]: { defaultDuration: number; label: string } } = {
+  pomodoro: { defaultDuration: 25 * 60, label: 'Pomodoro' },
+  stopwatch: { defaultDuration: 0, label: 'Stopwatch' },
 };
 
 export default function Timer() {
@@ -30,6 +30,7 @@ export default function Timer() {
   const router = useRouter();
 
   const [mode, setMode] = useState<TimerMode>('pomodoro');
+  const [customDuration, setCustomDuration] = useState(modeSettings.pomodoro.defaultDuration / 60);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const { toast } = useToast();
@@ -40,8 +41,6 @@ export default function Timer() {
   const handleSessionEnd = async (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => {
     if (!selectedSubject || !user || !sessionData.startTime) return;
     
-    console.log('Session ended:', sessionData);
-    
     try {
       await addDoc(collection(firestore, 'sessions'), {
         userId: user.uid,
@@ -51,7 +50,7 @@ export default function Timer() {
         endTime: serverTimestamp(),
         duration: sessionData.duration,
         pauseCount: sessionData.pauseCount,
-        status: 'completed', // Or 'stopped' if reset is called early
+        status: 'completed',
         focusScore: 100, // Placeholder
       });
 
@@ -69,6 +68,8 @@ export default function Timer() {
     }
   };
 
+  const timerDuration = mode === 'pomodoro' ? customDuration * 60 : modeSettings.stopwatch.defaultDuration;
+
   const {
     time,
     isActive,
@@ -78,10 +79,17 @@ export default function Timer() {
     reset,
     duration,
   } = useTimer({ 
-    initialDuration: modeSettings[mode].duration, 
+    initialDuration: timerDuration, 
     onEnd: handleSessionEnd, 
     timerType: mode === 'stopwatch' ? 'stopwatch' : 'countdown' 
   });
+  
+  useEffect(() => {
+    if (!isActive) {
+        reset(timerDuration);
+    }
+  }, [customDuration, mode, isActive]);
+
 
   const handleStart = () => {
     if (user && !selectedSubject) {
@@ -97,8 +105,10 @@ export default function Timer() {
 
   const handleModeChange = (newMode: string) => {
     if (isActive) return;
-    setMode(newMode as TimerMode);
-    reset(modeSettings[newMode as TimerMode].duration);
+    const modeKey = newMode as TimerMode;
+    setMode(modeKey);
+    const newDuration = modeKey === 'pomodoro' ? customDuration * 60 : modeSettings.stopwatch.defaultDuration;
+    reset(newDuration);
   };
   
   const handleSubjectChange = (subjectId: string) => {
@@ -136,8 +146,7 @@ export default function Timer() {
 
   return (
     <>
-    <Card className="w-full max-w-lg shadow-lg">
-      <CardContent className="flex flex-col items-center gap-8 p-6 md:p-8">
+    <div className="w-full max-w-lg flex flex-col items-center gap-8 p-6 md:p-8 rounded-2xl bg-card/50 shadow-lg backdrop-blur-sm">
         <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
           <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
             {Object.entries(modeSettings).map(([key, value]) => (
@@ -151,6 +160,19 @@ export default function Timer() {
         <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
         <div className="w-full space-y-4">
+            {mode === 'pomodoro' && (
+              <div className='flex items-center gap-2'>
+                <label htmlFor="custom-duration" className='text-sm text-muted-foreground'>Duration (min):</label>
+                <Input
+                    id="custom-duration"
+                    type="number"
+                    value={customDuration}
+                    onChange={(e) => setCustomDuration(Number(e.target.value))}
+                    className="w-20"
+                    disabled={isActive}
+                />
+              </div>
+            )}
             <div className="flex gap-2">
                 <Select onValueChange={handleSubjectChange} disabled={isActive || !user} value={selectedSubject?.id || ""}>
                     <SelectTrigger className="w-full">
@@ -183,8 +205,7 @@ export default function Timer() {
             }}
           />
         </div>
-      </CardContent>
-    </Card>
+    </div>
     <AddSubjectDialog
         isOpen={isAddSubjectOpen}
         onOpenChange={setAddSubjectOpen}
