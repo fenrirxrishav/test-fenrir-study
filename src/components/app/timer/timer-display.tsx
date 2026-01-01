@@ -13,8 +13,8 @@ const formatTime = (seconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const STROKE_WIDTH = 8;
-const RADIUS = 112; // h-72 w-72 -> 288px. Half is 144. Inset-2 -> 140. Border-4 -> 132. SVG inset is 0. Let's use 112.
+const STROKE_WIDTH = 10;
+const RADIUS = 110; 
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDisplayProps) {
@@ -31,11 +31,14 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
 
   return (
     <div className="relative flex h-64 w-64 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-72 md:w-72">
-       <div className="absolute inset-2 rounded-full border-4 border-muted/20"></div>
+       <div className="absolute inset-4 rounded-full border-[10px] border-muted/20"></div>
        <div className="absolute inset-0 flex items-center justify-center">
             <svg className="h-full w-full -rotate-90 transform">
                 <circle
-                    className="text-primary transition-all duration-300 ease-linear"
+                    className={cn(
+                      "text-primary transition-all duration-300 ease-linear",
+                      timerType === 'stopwatch' && "text-muted-foreground"
+                    )}
                     stroke="currentColor"
                     fill="transparent"
                     strokeWidth={STROKE_WIDTH}
@@ -44,7 +47,7 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
                     cy="50%"
                     r={RADIUS}
                     strokeDasharray={CIRCUMFERENCE}
-                    strokeDashoffset={strokeDashoffset}
+                    strokeDashoffset={timerType === 'countdown' ? strokeDashoffset : 0}
                 />
             </svg>
         </div>

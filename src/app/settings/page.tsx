@@ -25,6 +25,12 @@ export default function SettingsPage() {
         return <div>Loading...</div>; // Or a proper loading skeleton
     }
 
+    // A real implementation would save these to a user settings collection in Firestore
+    const handleSaveChanges = () => {
+        console.log("Saving settings...");
+        // Here you would typically get the values and save them
+    }
+
     return (
         <div className="container mx-auto p-4 md:p-8">
             <h1 className="mb-6 text-3xl font-bold tracking-tight">Settings</h1>
@@ -74,7 +80,7 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="border-t px-6 py-4">
-                            <Button>Save Changes</Button>
+                            <Button onClick={handleSaveChanges}>Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </div>
@@ -83,7 +89,7 @@ export default function SettingsPage() {
                          <CardHeader>
                             <CardTitle>Data Export</CardTitle>
                             <CardDescription>Download your study session history.</CardDescription>
-                        </CardHeader>
+                        </Header>
                         <CardContent className="space-y-4">
                             <Button variant="outline" className="w-full">
                                 <Download className="mr-2 h-4 w-4" /> Export as CSV

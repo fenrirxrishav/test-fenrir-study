@@ -84,18 +84,10 @@ export default function Timer() {
   });
 
   const handleStart = () => {
-    if (!user) {
-      toast({
-        title: 'Please Log In',
-        description: 'Log in to start tracking your study sessions.',
-        action: <Button onClick={() => router.push('/login')}>Login</Button>
-      });
-      return;
-    }
-    if (!selectedSubject) {
+    if (user && !selectedSubject) {
       toast({
         title: 'No Subject Selected',
-        description: 'Please select a subject before starting the timer.',
+        description: 'Please select a subject before starting the timer to save your session.',
         variant: 'destructive',
       });
       return;
@@ -156,11 +148,11 @@ export default function Timer() {
           </TabsList>
         </Tabs>
         
-        <TimerDisplay time={time} subjectName={selectedSubject?.name || 'Select Subject'} duration={duration} timerType={mode} />
+        <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
         <div className="w-full space-y-4">
             <div className="flex gap-2">
-                <Select onValueChange={handleSubjectChange} disabled={isActive || userLoading || subjectsLoading} value={selectedSubject?.id || ""}>
+                <Select onValueChange={handleSubjectChange} disabled={isActive || !user} value={selectedSubject?.id || ""}>
                     <SelectTrigger className="w-full">
                     <SelectValue placeholder={user ? (subjectsLoading ? "Loading subjects..." : "Select a subject") : "Login to see subjects"} />
                     </SelectTrigger>
