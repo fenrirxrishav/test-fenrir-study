@@ -37,7 +37,7 @@ export default function RootLayout({
           <FirebaseProvider>
             <div className="relative flex min-h-screen flex-col">
               <AppHeader />
-              <main className="flex-1 pb-24">{children}</main>
+              <main className="flex-1 overflow-y-auto pb-24">{children}</main>
               <BottomNav />
             </div>
             <Toaster />
