@@ -89,7 +89,7 @@ export default function SettingsPage() {
                          <CardHeader>
                             <CardTitle>Data Export</CardTitle>
                             <CardDescription>Download your study session history.</CardDescription>
-                        </Header>
+                        </CardHeader>
                         <CardContent className="space-y-4">
                             <Button variant="outline" className="w-full">
                                 <Download className="mr-2 h-4 w-4" /> Export as CSV
