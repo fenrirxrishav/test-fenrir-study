@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          'min-h-dvh bg-background font-sans antialiased',
+          'h-dvh bg-background font-sans antialiased overflow-hidden',
           inter.variable
         )}
       >
@@ -36,9 +36,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <FirebaseProvider>
-            <div className="relative flex min-h-dvh flex-col">
+            <div className="relative flex h-full flex-col">
               <AppHeader />
-              <main className="flex-1 pb-24 md:pb-8">
+              <main className="flex-1 overflow-y-auto">
                 {children}
               </main>
               <BottomNav />
