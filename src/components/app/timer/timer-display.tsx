@@ -1,3 +1,4 @@
+
 import { cn } from "@/lib/utils";
 
 interface TimerDisplayProps {
@@ -55,7 +56,7 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
         </div>
 
       <div className="z-10 flex flex-col items-center justify-center text-center">
-        <span className="font-mono text-6xl font-bold tracking-tighter text-foreground md:text-7xl">
+        <span className="font-mono text-5xl font-bold tracking-tighter text-foreground md:text-6xl">
           {formatTime(time)}
         </span>
         <span className="mt-2 truncate text-sm font-medium text-muted-foreground"
