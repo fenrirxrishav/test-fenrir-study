@@ -13,8 +13,8 @@ const formatTime = (seconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const STROKE_WIDTH = 10;
-const RADIUS = 110; 
+const STROKE_WIDTH = 8;
+const RADIUS = 120;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const VIEWBOX_SIZE = RADIUS * 2 + STROKE_WIDTH * 2;
 
@@ -32,7 +32,7 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <div className="relative flex h-64 w-64 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-72 md:w-72">
+    <div className="relative flex h-72 w-72 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-80 md:w-80">
        <div className="absolute inset-4 rounded-full border-[10px] border-muted/20"></div>
        <div className="absolute inset-0 flex items-center justify-center">
             <svg className="h-full w-full -rotate-90 transform" viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
