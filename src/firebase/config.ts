@@ -15,11 +15,12 @@ let app: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
 
+// This check ensures that Firebase is only initialized on the client side.
 if (typeof window !== 'undefined') {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   auth = getAuth(app);
   firestore = getFirestore(app);
 }
 
-// @ts-ignore
+// The exports are now guarded and will be undefined on the server.
 export { app, auth, firestore };

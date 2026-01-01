@@ -12,10 +12,11 @@ interface FirebaseContextType {
   firestore: Firestore | null;
 }
 
-const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
+const FirebaseContext = createContext<FirebaseContextType>({ app: null, auth: null, firestore: null });
 
 export function FirebaseProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => {
+    // This check ensures Firebase is only initialized on the client side.
     if (typeof window !== 'undefined') {
       return { app, auth, firestore };
     }
@@ -32,11 +33,7 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
 export const useFirebase = (): FirebaseContextType => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
-    // This case should ideally not be hit if the provider is set up correctly.
-    if (typeof window !== "undefined") {
-       throw new Error('useFirebase must be used within a FirebaseProvider');
-    }
-    return { app: null, auth: null, firestore: null };
+    throw new Error('useFirebase must be used within a FirebaseProvider');
   }
   return context;
 };
