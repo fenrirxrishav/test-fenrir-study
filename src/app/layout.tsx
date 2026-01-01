@@ -25,7 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          'min-h-screen bg-background font-sans antialiased',
+          'min-h-dvh bg-background font-sans antialiased',
           inter.variable
         )}
       >
@@ -38,7 +38,7 @@ export default function RootLayout({
           <FirebaseProvider>
             <div className="relative flex min-h-dvh flex-col">
               <AppHeader />
-              <main className="flex-1 pb-16 md:pb-0">
+              <main className="flex-1 pb-24 md:pb-8">
                 {children}
               </main>
               <BottomNav />

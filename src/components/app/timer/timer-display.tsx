@@ -6,6 +6,7 @@ interface TimerDisplayProps {
   subjectName?: string;
   duration: number;
   timerType: 'countdown' | 'stopwatch';
+  isActive: boolean;
 }
 
 const formatTime = (seconds: number) => {
@@ -14,13 +15,13 @@ const formatTime = (seconds: number) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const STROKE_WIDTH = 8;
-const RADIUS = 120;
+const STROKE_WIDTH = 10;
+const RADIUS = 140;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const VIEWBOX_SIZE = RADIUS * 2 + STROKE_WIDTH * 2;
 
 
-export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDisplayProps) {
+export function TimerDisplay({ time, subjectName, duration, timerType, isActive }: TimerDisplayProps) {
 
   const getProgress = () => {
     if (timerType === 'stopwatch' || duration === 0) {
@@ -33,14 +34,14 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <div className="relative flex h-72 w-72 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-80 md:w-80">
-       <div className="absolute inset-4 rounded-full border-[10px] border-muted/20"></div>
+    <div className="relative flex h-80 w-80 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-96 md:w-96">
+       <div className="absolute inset-4 rounded-full border-[12px] border-muted/20"></div>
        <div className="absolute inset-0 flex items-center justify-center">
             <svg className="h-full w-full -rotate-90 transform" viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
                 <circle
                     className={cn(
                       "text-primary transition-all duration-1000 ease-linear",
-                      timerType === 'stopwatch' && "text-muted-foreground"
+                      !isActive && "animate-pulse-slow"
                     )}
                     stroke="currentColor"
                     fill="transparent"

@@ -158,17 +158,17 @@ export default function Timer() {
 
   return (
     <>
-      <div className="flex h-full w-full flex-col items-center justify-between">
+      <div className="flex h-full w-full flex-col items-center justify-between gap-8">
         
-        <div className="w-full flex justify-end items-center absolute top-4 right-4">
+        <div className="w-full flex justify-end items-center absolute top-20 right-4 sm:top-4">
              <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)}>
                 <Palette />
             </Button>
         </div>
         
-        <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
+        <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} isActive={isActive}/>
 
-        <Card className="w-full max-w-md p-4 space-y-4 shadow-lg rounded-2xl">
+        <div className="w-full max-w-md p-4 space-y-4">
             <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
               <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
                 {Object.entries(modeSettings).map(([key, value]) => (
@@ -224,7 +224,7 @@ export default function Timer() {
               reset();
             }}
           />
-        </Card>
+        </div>
       </div>
       <AddSubjectDialog
           isOpen={isAddSubjectOpen}

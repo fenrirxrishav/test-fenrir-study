@@ -43,6 +43,12 @@ const styles = [
       light: { primary: '20 90% 60%', background: '30 100% 97%', accent: '25 80% 90%', card: '30 100% 97%' },
       dark: { primary: '20 90% 60%', background: '20 40% 5%', accent: '20 30% 15%', card: '20 40% 5%' },
     },
+    { 
+      id: 'matrix', 
+      name: 'Matrix', 
+      light: { primary: '130 100% 40%', background: '0 0% 95%', accent: '0 0% 80%', card: '0 0% 95%' },
+      dark: { primary: '130 100% 50%', background: '0 0% 2%', accent: '130 50% 10%', card: '0 0% 2%' },
+    },
 ];
 
 export function StyleSelector({ isOpen, onOpenChange }: StyleSelectorProps) {

@@ -24,22 +24,22 @@ export default function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 h-16 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full h-full max-w-lg mx-auto">
-            <div className="grid h-full grid-cols-5">
+    <div className="fixed bottom-0 inset-x-0 z-50 h-24 pointer-events-none">
+        <div className="w-full h-full max-w-sm mx-auto p-4">
+            <div className="grid h-full grid-cols-5 bg-background/80 backdrop-blur-lg border rounded-full shadow-lg pointer-events-auto">
                 {routes.map((route) => (
                 <Link
                     key={route.href}
                     href={route.href}
                     className={cn(
-                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary',
+                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-300 hover:text-primary rounded-full',
                     pathname === route.href
                         ? 'text-primary'
                         : 'text-muted-foreground'
                     )}
                 >
                     <route.icon className="h-5 w-5" />
-                    <span>{route.label}</span>
+                    <span className="hidden sm:inline">{route.label}</span>
                 </Link>
                 ))}
             </div>
