@@ -1,10 +1,10 @@
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { useUser, useAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { UserNav } from './user-nav';
+import { ThemeToggle } from './theme-toggle';
 
 export function FenrirLogo() {
     return (
@@ -44,14 +44,7 @@ export function FenrirLogo() {
 
 export function AppHeader() {
   const { user, loading } = useUser();
-  const auth = useAuth();
   const router = useRouter();
-
-  const handleSignOut = async () => {
-    if (!auth) return;
-    await signOut(auth);
-    router.push('/');
-  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -60,7 +53,7 @@ export function AppHeader() {
             <FenrirLogo />
             <span className="font-bold">fenrirstudy</span>
         </Link>
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        <div className="flex flex-1 items-center justify-end space-x-2">
           <nav className="flex items-center space-x-1">
             {loading ? (
                 <div></div> // Or a skeleton loader
@@ -72,6 +65,7 @@ export function AppHeader() {
               </Button>
             )}
           </nav>
+           <ThemeToggle />
         </div>
       </div>
     </header>

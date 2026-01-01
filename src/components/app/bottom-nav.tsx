@@ -31,9 +31,9 @@ export default function BottomNav() {
                     key={route.href}
                     href={route.href}
                     className={cn(
-                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary rounded-full',
+                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary rounded-full transform hover:scale-110',
                     pathname === route.href
-                        ? 'text-primary'
+                        ? 'text-primary scale-110'
                         : 'text-muted-foreground'
                     )}
                 >

@@ -39,7 +39,7 @@ export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDi
             <svg className="h-full w-full -rotate-90 transform" viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
                 <circle
                     className={cn(
-                      "text-primary transition-all duration-300 ease-linear",
+                      "text-primary transition-all duration-1000 ease-linear",
                       timerType === 'stopwatch' && "text-muted-foreground"
                     )}
                     stroke="currentColor"

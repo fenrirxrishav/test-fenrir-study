@@ -29,23 +29,25 @@ export function useTimer({
     }
   }, [initialDuration, timerType, isActive]);
   
+  const handleTick = useCallback(() => {
+     if (timerType === 'countdown') {
+        setTime((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(intervalRef.current!);
+            setIsActive(false);
+            onEnd({ duration: duration, pauseCount, startTime: startTimeRef.current });
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      } else { // Stopwatch
+        setTime((prevTime) => prevTime + 1);
+      }
+  }, [timerType, onEnd, duration, pauseCount]);
+
   useEffect(() => {
     if (isActive && !isPaused) {
-      intervalRef.current = setInterval(() => {
-        if (timerType === 'countdown') {
-          setTime((prevTime) => {
-            if (prevTime <= 1) {
-              clearInterval(intervalRef.current!);
-              setIsActive(false);
-              onEnd({ duration: duration, pauseCount, startTime: startTimeRef.current });
-              return 0;
-            }
-            return prevTime - 1;
-          });
-        } else { // Stopwatch
-          setTime((prevTime) => prevTime + 1);
-        }
-      }, 1000);
+      intervalRef.current = setInterval(handleTick, 1000);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -56,7 +58,7 @@ export function useTimer({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, isPaused, duration, pauseCount, onEnd, timerType]);
+  }, [isActive, isPaused, handleTick]);
   
   const start = useCallback(() => {
     setIsActive(true);

@@ -10,12 +10,13 @@ import { Subject } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Palette } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { addDoc, collection, serverTimestamp, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
+import { StyleSelector } from './style-selector';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 
@@ -33,6 +34,7 @@ export default function Timer() {
   const [customDuration, setCustomDuration] = useState(modeSettings.pomodoro.defaultDuration / 60);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
+  const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
   const { toast } = useToast();
 
   const subjectsQuery = user ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -88,7 +90,7 @@ export default function Timer() {
     if (!isActive) {
         reset(timerDuration);
     }
-  }, [customDuration, mode, isActive]);
+  }, [customDuration, mode, isActive, reset, timerDuration]);
 
 
   const handleStart = () => {
@@ -107,8 +109,6 @@ export default function Timer() {
     if (isActive) return;
     const modeKey = newMode as TimerMode;
     setMode(modeKey);
-    const newDuration = modeKey === 'pomodoro' ? customDuration * 60 : modeSettings.stopwatch.defaultDuration;
-    reset(newDuration);
   };
   
   const handleSubjectChange = (subjectId: string) => {
@@ -150,15 +150,21 @@ export default function Timer() {
   return (
     <>
       <div className="flex h-full w-full flex-col items-center justify-between pb-24">
-        <Tabs value={mode} onValueChange={handleModeChange} className="w-full max-w-xs">
-          <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
-            {Object.entries(modeSettings).map(([key, value]) => (
-              <TabsTrigger key={key} value={key} disabled={isActive}>
-                {value.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        
+        <div className="w-full max-w-xs flex justify-between items-center">
+            <Tabs value={mode} onValueChange={handleModeChange} className="">
+              <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
+                {Object.entries(modeSettings).map(([key, value]) => (
+                  <TabsTrigger key={key} value={key} disabled={isActive}>
+                    {value.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)}>
+                <Palette />
+            </Button>
+        </div>
         
         <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
@@ -214,6 +220,10 @@ export default function Timer() {
           isOpen={isAddSubjectOpen}
           onOpenChange={setAddSubjectOpen}
           onAddSubject={handleAddSubject}
+      />
+      <StyleSelector
+        isOpen={isStyleSelectorOpen}
+        onOpenChange={setStyleSelectorOpen}
       />
     </>
   );
