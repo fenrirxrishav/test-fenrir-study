@@ -119,20 +119,23 @@ export default function Timer() {
 
   const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId'>) => {
     if (!user) {
-        toast({
-            title: 'Please Log In',
-            description: 'You need to be logged in to add subjects.',
-            action: <Button onClick={() => router.push('/login')}>Login</Button>
-        });
-        return;
+      toast({
+        title: 'Please Log In',
+        description: 'You need to be logged in to add subjects.',
+        action: <Button onClick={() => router.push('/login')}>Login</Button>
+      });
+      return;
     }
+    if (!firestore) return;
+
     try {
         const docRef = await addDoc(collection(firestore, "subjects"), {
             ...newSubject,
             userId: user.uid,
             archived: false,
+            createdAt: serverTimestamp()
         });
-        setSelectedSubject({ ...newSubject, id: docRef.id, archived: false, userId: user.uid });
+        setSelectedSubject({ ...newSubject, id: docRef.id, archived: false, userId: user.uid, createdAt: new Date().toISOString() });
         setAddSubjectOpen(false);
     } catch (e) {
         console.error("Error adding document: ", e);
@@ -146,8 +149,8 @@ export default function Timer() {
 
   return (
     <>
-    <div className="w-full max-w-lg flex flex-col items-center gap-8 p-6 md:p-8 rounded-2xl bg-card/50 shadow-lg backdrop-blur-sm">
-        <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
+      <div className="flex h-full w-full flex-col items-center justify-between pb-24">
+        <Tabs value={mode} onValueChange={handleModeChange} className="w-full max-w-xs">
           <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
             {Object.entries(modeSettings).map(([key, value]) => (
               <TabsTrigger key={key} value={key} disabled={isActive}>
@@ -159,16 +162,16 @@ export default function Timer() {
         
         <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
-        <div className="w-full space-y-4">
+        <div className="w-full max-w-xs space-y-4 rounded-2xl bg-card/50 p-4 shadow-lg backdrop-blur-sm">
             {mode === 'pomodoro' && (
-              <div className='flex items-center gap-2'>
-                <label htmlFor="custom-duration" className='text-sm text-muted-foreground'>Duration (min):</label>
+              <div className='flex items-center justify-between gap-2'>
+                <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration (min):</label>
                 <Input
                     id="custom-duration"
                     type="number"
                     value={customDuration}
                     onChange={(e) => setCustomDuration(Number(e.target.value))}
-                    className="w-20"
+                    className="w-24"
                     disabled={isActive}
                 />
               </div>
@@ -205,12 +208,12 @@ export default function Timer() {
             }}
           />
         </div>
-    </div>
-    <AddSubjectDialog
-        isOpen={isAddSubjectOpen}
-        onOpenChange={setAddSubjectOpen}
-        onAddSubject={handleAddSubject}
-    />
+      </div>
+      <AddSubjectDialog
+          isOpen={isAddSubjectOpen}
+          onOpenChange={setAddSubjectOpen}
+          onAddSubject={handleAddSubject}
+      />
     </>
   );
 }

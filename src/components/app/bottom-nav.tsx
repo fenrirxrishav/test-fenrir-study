@@ -23,9 +23,9 @@ export default function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center">
-        <div className="w-full max-w-xs mx-auto">
-            <div className="grid h-16 grid-cols-5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-full shadow-lg">
+    <div className="fixed bottom-0 inset-x-0 z-50 h-16">
+        <div className="w-full h-full max-w-lg mx-auto px-4">
+            <div className="grid h-full grid-cols-5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-full shadow-lg">
                 {routes.map((route) => (
                 <Link
                     key={route.href}
