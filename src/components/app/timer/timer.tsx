@@ -83,7 +83,6 @@ export default function Timer() {
     start,
     pause,
     reset,
-    duration,
   } = useTimer({ 
     initialDuration: timerDuration, 
     onEnd: handleSessionEnd, 
@@ -235,7 +234,7 @@ export default function Timer() {
                 </Button>
             </div>
         
-            <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} isActive={isActive}/>
+            <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} />
             
             <div className={cn("flex w-full items-center justify-center md:w-auto", {
                 "md:max-w-sm": layout === 'side'
