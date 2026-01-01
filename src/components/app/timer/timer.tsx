@@ -117,7 +117,7 @@ export default function Timer() {
     setSelectedSubject(subject);
   };
 
-  const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId'>) => {
+  const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId' | 'createdAt'>) => {
     if (!user) {
       toast({
         title: 'Please Log In',
@@ -162,10 +162,10 @@ export default function Timer() {
         
         <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
-        <div className="w-full max-w-xs space-y-4 rounded-2xl bg-card/50 p-4 shadow-lg backdrop-blur-sm">
+        <div className="w-full max-w-xs space-y-4">
             {mode === 'pomodoro' && (
-              <div className='flex items-center justify-between gap-2'>
-                <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration (min):</label>
+              <div className='flex items-center justify-center gap-2'>
+                <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration:</label>
                 <Input
                     id="custom-duration"
                     type="number"
@@ -174,6 +174,7 @@ export default function Timer() {
                     className="w-24"
                     disabled={isActive}
                 />
+                 <span className="text-sm text-muted-foreground">min</span>
               </div>
             )}
             <div className="flex gap-2">
