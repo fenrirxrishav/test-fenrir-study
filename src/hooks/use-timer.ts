@@ -2,7 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export function useTimer(initialDuration: number, onEnd: (sessionData: { duration: number, pauseCount: number }) => void) {
+type UseTimerProps = {
+  initialDuration: number;
+  onEnd: (sessionData: { duration: number; pauseCount: number }) => void;
+  timerType?: 'countdown' | 'stopwatch';
+};
+
+export function useTimer({
+  initialDuration,
+  onEnd,
+  timerType = 'countdown',
+}: UseTimerProps) {
   const [duration, setDuration] = useState(initialDuration);
   const [time, setTime] = useState(initialDuration);
   const [isActive, setIsActive] = useState(false);
@@ -15,20 +25,24 @@ export function useTimer(initialDuration: number, onEnd: (sessionData: { duratio
     // Reset timer when initial duration changes (e.g., mode switch)
     setTime(initialDuration);
     setDuration(initialDuration);
-  }, [initialDuration]);
+  }, [initialDuration, timerType]);
   
   useEffect(() => {
     if (isActive && !isPaused) {
       intervalRef.current = setInterval(() => {
-        setTime((prevTime) => {
-          if (prevTime <= 1) {
-            clearInterval(intervalRef.current!);
-            setIsActive(false);
-            onEnd({ duration: duration, pauseCount });
-            return 0;
-          }
-          return prevTime - 1;
-        });
+        if (timerType === 'countdown') {
+          setTime((prevTime) => {
+            if (prevTime <= 1) {
+              clearInterval(intervalRef.current!);
+              setIsActive(false);
+              onEnd({ duration: duration, pauseCount });
+              return 0;
+            }
+            return prevTime - 1;
+          });
+        } else { // Stopwatch
+          setTime((prevTime) => prevTime + 1);
+        }
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -40,56 +54,8 @@ export function useTimer(initialDuration: number, onEnd: (sessionData: { duratio
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, isPaused, duration, pauseCount, onEnd]);
+  }, [isActive, isPaused, duration, pauseCount, onEnd, timerType]);
   
-  // Persist state to localStorage
-  useEffect(() => {
-    try {
-      if (isActive) {
-        const timerState = {
-          time,
-          duration,
-          isActive,
-          isPaused,
-          pauseCount,
-          startTime: startTimeRef.current,
-          expires: Date.now() + time * 1000,
-        };
-        localStorage.setItem('timerState', JSON.stringify(timerState));
-      } else {
-        localStorage.removeItem('timerState');
-      }
-    } catch (error) {
-      console.error("Could not access localStorage:", error);
-    }
-  }, [time, isActive, isPaused, pauseCount, duration]);
-
-  // Rehydrate state from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedStateJSON = localStorage.getItem('timerState');
-      if (savedStateJSON) {
-        const savedState = JSON.parse(savedStateJSON);
-        if (savedState.expires > Date.now()) {
-          const timeRemaining = Math.round((savedState.expires - Date.now()) / 1000);
-          setTime(timeRemaining);
-          setDuration(savedState.duration);
-          setIsActive(savedState.isActive);
-          setIsPaused(savedState.isPaused);
-          setPauseCount(savedState.pauseCount);
-          startTimeRef.current = savedState.startTime;
-        } else {
-          // Timer expired while tab was closed
-          onEnd({ duration: savedState.duration, pauseCount: savedState.pauseCount });
-          localStorage.removeItem('timerState');
-        }
-      }
-    } catch (error) {
-      console.error("Could not access localStorage:", error);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const start = useCallback(() => {
     setIsActive(true);
     setIsPaused(false);
@@ -109,25 +75,25 @@ export function useTimer(initialDuration: number, onEnd: (sessionData: { duratio
 
   const reset = useCallback((newDuration?: number) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    const finalDuration = newDuration ?? duration;
     
     if (isActive) {
-        const studiedDuration = duration - time;
-        onEnd({ duration: studiedDuration, pauseCount });
+        const studiedDuration = timerType === 'countdown' ? duration - time : time;
+        if (studiedDuration > 0) {
+            onEnd({ duration: studiedDuration, pauseCount });
+        }
     }
+
+    const finalDuration = newDuration ?? (timerType === 'countdown' ? duration : 0);
 
     setIsActive(false);
     setIsPaused(false);
     setPauseCount(0);
     setTime(finalDuration);
-    setDuration(finalDuration);
-    startTimeRef.current = null;
-    try {
-      localStorage.removeItem('timerState');
-    } catch (error) {
-      console.error("Could not access localStorage:", error);
+    if(timerType === 'countdown') {
+        setDuration(finalDuration);
     }
-  }, [duration, time, isActive, pauseCount, onEnd]);
+    startTimeRef.current = null;
+  }, [duration, time, isActive, pauseCount, onEnd, timerType]);
 
   return { time, isActive, isPaused, start, pause, reset };
 }

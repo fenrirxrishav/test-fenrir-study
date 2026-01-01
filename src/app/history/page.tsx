@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -5,6 +7,8 @@ import { getSubjectById, mockSessions } from "@/lib/data";
 import { MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { Subject } from "@/lib/definitions";
 
 function formatDuration(seconds: number) {
     const h = Math.floor(seconds / 3600);
@@ -18,6 +22,19 @@ function formatDuration(seconds: number) {
 }
 
 export default function HistoryPage() {
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+
+    useEffect(() => {
+        try {
+            const storedSubjects = localStorage.getItem('subjects');
+            if (storedSubjects) {
+                setSubjects(JSON.parse(storedSubjects));
+            }
+        } catch (error) {
+            console.error("Could not access localStorage:", error);
+        }
+    }, []);
+
     return (
         <div className="container mx-auto p-4 md:p-8">
             <div className="flex items-center justify-between mb-6">
@@ -39,7 +56,7 @@ export default function HistoryPage() {
                         </TableHeader>
                         <TableBody>
                             {mockSessions.map((session) => {
-                                const subject = getSubjectById(session.subjectId);
+                                const subject = getSubjectById(subjects, session.subjectId);
                                 return (
                                 <TableRow key={session.id}>
                                     <TableCell className="font-medium flex items-center gap-2">

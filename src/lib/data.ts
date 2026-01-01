@@ -1,12 +1,6 @@
 import { Subject, Session } from './definitions';
 
-export const mockSubjects: Subject[] = [
-  { id: '1', name: 'Quantum Physics', color: '#3498DB', archived: false, priority: 'high' },
-  { id: '2', name: 'Organic Chemistry', color: '#2ECC71', archived: false, priority: 'medium' },
-  { id: '3', name: 'Literary Analysis', color: '#F1C40F', archived: false, priority: 'low' },
-  { id: '4', name: 'Advanced Algorithms', color: '#E74C3C', archived: false },
-  { id: '5', name: 'Historical Studies', color: '#9B59B6', archived: true },
-];
+export const mockSubjects: Subject[] = [];
 
 export const mockSessions: Session[] = [
     {
@@ -84,4 +78,4 @@ export const mockSessions: Session[] = [
 ];
 
 // Helper function to get subject name by ID
-export const getSubjectById = (id: string) => mockSubjects.find(s => s.id === id);
+export const getSubjectById = (subjects: Subject[], id: string) => subjects.find(s => s.id === id);

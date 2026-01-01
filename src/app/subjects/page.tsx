@@ -1,12 +1,28 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { mockSubjects } from "@/lib/data";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useEffect, useState } from "react";
+import { Subject } from "@/lib/definitions";
 
 export default function SubjectsPage() {
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+
+    useEffect(() => {
+        try {
+            const storedSubjects = localStorage.getItem('subjects');
+            if (storedSubjects) {
+                setSubjects(JSON.parse(storedSubjects));
+            }
+        } catch (error) {
+            console.error("Could not access localStorage:", error);
+        }
+    }, []);
+
     return (
         <div className="container mx-auto p-4 md:p-8">
             <div className="flex items-center justify-between mb-6">
@@ -28,7 +44,7 @@ export default function SubjectsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockSubjects.map((subject) => (
+                            {subjects.map((subject) => (
                                 <TableRow key={subject.id}>
                                     <TableCell>
                                         <div className="h-4 w-4 rounded-full" style={{ backgroundColor: subject.color }}></div>
