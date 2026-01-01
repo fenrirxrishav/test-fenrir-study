@@ -16,7 +16,7 @@ const formatTime = (seconds: number) => {
 };
 
 const STROKE_WIDTH = 12;
-const RADIUS = 140; // Reduced radius
+const RADIUS = 150; 
 const VIEWBOX_SIZE = RADIUS * 2 + STROKE_WIDTH * 2;
 
 
@@ -34,7 +34,10 @@ export function TimerDisplay({ time, subjectName, duration, timerType, isActive 
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
 
   return (
-    <div className="relative flex h-80 w-80 items-center justify-center rounded-full bg-background p-4 shadow-inner">
+    <div 
+      className="relative flex items-center justify-center rounded-full bg-background p-4 shadow-inner"
+      style={{ width: 'var(--timer-size)', height: 'var(--timer-size)' }}
+    >
        <div className="absolute inset-4 rounded-full border-[14px] border-muted/20"></div>
        <div className="absolute inset-0 flex items-center justify-center">
             <svg className="h-full w-full -rotate-90 transform" viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
@@ -57,7 +60,10 @@ export function TimerDisplay({ time, subjectName, duration, timerType, isActive 
         </div>
 
       <div className="z-10 flex flex-col items-center justify-center text-center">
-        <span className="font-mono text-7xl font-bold tracking-tighter text-foreground md:text-7xl">
+        <span 
+          className="font-mono font-bold tracking-tighter text-foreground"
+          style={{ fontSize: 'var(--timer-font-size)' }}
+        >
           {formatTime(time)}
         </span>
         <span className="mt-2 truncate text-base font-medium text-muted-foreground"
