@@ -17,6 +17,7 @@ import { addDoc, collection, serverTimestamp, query, where } from 'firebase/fire
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { StyleSelector } from './style-selector';
+import { Card } from '@/components/ui/card';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 
@@ -41,7 +42,7 @@ export default function Timer() {
   const { data: subjects, loading: subjectsLoading } = useCollection<Subject>(subjectsQuery);
 
   const handleSessionEnd = async (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => {
-    if (!selectedSubject || !user || !sessionData.startTime) return;
+    if (!user || !selectedSubject || !sessionData.startTime || sessionData.duration < 5) return;
     
     try {
       await addDoc(collection(firestore, 'sessions'), {
@@ -149,10 +150,18 @@ export default function Timer() {
 
   return (
     <>
-      <div className="flex h-full w-full flex-col items-center justify-between pb-24">
+      <div className="flex h-full w-full flex-col items-center justify-between pb-16 md:pb-0">
         
-        <div className="w-full max-w-xs flex justify-between items-center">
-            <Tabs value={mode} onValueChange={handleModeChange} className="">
+        <div className="w-full flex justify-end items-center -mt-4">
+             <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)}>
+                <Palette />
+            </Button>
+        </div>
+        
+        <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
+
+        <Card className="w-full max-w-md p-4 space-y-4 shadow-lg rounded-2xl">
+            <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
               <TabsList className={cn("grid w-full grid-cols-2", isActive && "pointer-events-none opacity-50")}>
                 {Object.entries(modeSettings).map(([key, value]) => (
                   <TabsTrigger key={key} value={key} disabled={isActive}>
@@ -161,14 +170,7 @@ export default function Timer() {
                 ))}
               </TabsList>
             </Tabs>
-            <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)}>
-                <Palette />
-            </Button>
-        </div>
-        
-        <TimerDisplay time={time} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} duration={duration} timerType={mode} />
 
-        <div className="w-full max-w-xs space-y-4">
             {mode === 'pomodoro' && (
               <div className='flex items-center justify-center gap-2'>
                 <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration:</label>
@@ -177,7 +179,7 @@ export default function Timer() {
                     type="number"
                     value={customDuration}
                     onChange={(e) => setCustomDuration(Number(e.target.value))}
-                    className="w-24"
+                    className="w-20 h-9"
                     disabled={isActive}
                 />
                  <span className="text-sm text-muted-foreground">min</span>
@@ -214,7 +216,7 @@ export default function Timer() {
               reset();
             }}
           />
-        </div>
+        </Card>
       </div>
       <AddSubjectDialog
           isOpen={isAddSubjectOpen}
