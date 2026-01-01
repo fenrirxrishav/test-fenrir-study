@@ -1,3 +1,5 @@
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getSubjectById, mockSessions } from "@/lib/data";
 import { useEffect, useState } from "react";
