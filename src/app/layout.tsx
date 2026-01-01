@@ -5,11 +5,13 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
 import BottomNav from '@/components/app/bottom-nav';
+import { AppHeader } from '@/components/app/header';
+import { FirebaseProvider } from '@/firebase';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'StudyFlow Analytics',
+  title: 'fenrirstudy',
   description: 'A personal study analytics system to enhance focus and productivity.',
 };
 
@@ -32,11 +34,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="relative flex min-h-screen flex-col">
-            <main className="flex-1 pb-24">{children}</main>
-            <BottomNav />
-          </div>
-          <Toaster />
+          <FirebaseProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <AppHeader />
+              <main className="flex-1 pb-24">{children}</main>
+              <BottomNav />
+            </div>
+            <Toaster />
+          </FirebaseProvider>
         </ThemeProvider>
       </body>
     </html>

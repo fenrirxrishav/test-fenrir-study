@@ -1,5 +1,6 @@
 export type Subject = {
   id: string;
+  userId: string;
   name: string;
   color: string;
   priority?: 'low' | 'medium' | 'high';
@@ -10,7 +11,7 @@ export type Session = {
   id: string;
   userId: string;
   subjectId: string;
-  mode: 'pomodoro' | 'deep-focus' | 'custom';
+  mode: 'pomodoro' | 'stopwatch';
   startTime: string; // ISO string
   endTime: string; // ISO string
   duration: number; // in seconds

@@ -13,6 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
+import { useUser, useFirestore, useCollection } from '@/firebase';
+import { addDoc, collection, serverTimestamp, query, where } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 
@@ -22,30 +25,48 @@ const modeSettings = {
 };
 
 export default function Timer() {
+  const { user, loading: userLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+
   const [mode, setMode] = useState<TimerMode>('pomodoro');
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    try {
-      const storedSubjects = localStorage.getItem('subjects');
-      if (storedSubjects) {
-        setSubjects(JSON.parse(storedSubjects));
-      }
-    } catch (error) {
-        console.error("Could not access localStorage:", error);
-    }
-  }, []);
+  const subjectsQuery = user ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
+  const { data: subjects, loading: subjectsLoading } = useCollection<Subject>(subjectsQuery);
 
-  const handleSessionEnd = (sessionData: { duration: number; pauseCount: number }) => {
+  const handleSessionEnd = async (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => {
+    if (!selectedSubject || !user || !sessionData.startTime) return;
+    
     console.log('Session ended:', sessionData);
-    toast({
-      title: "Session Saved!",
-      description: `You studied ${selectedSubject?.name} for ${Math.round(sessionData.duration / 60)} minutes.`,
-    });
-    // In a real app, this would be saved to a database
+    
+    try {
+      await addDoc(collection(firestore, 'sessions'), {
+        userId: user.uid,
+        subjectId: selectedSubject.id,
+        mode: mode,
+        startTime: new Date(sessionData.startTime).toISOString(),
+        endTime: serverTimestamp(),
+        duration: sessionData.duration,
+        pauseCount: sessionData.pauseCount,
+        status: 'completed', // Or 'stopped' if reset is called early
+        focusScore: 100, // Placeholder
+      });
+
+      toast({
+        title: "Session Saved!",
+        description: `You studied ${selectedSubject?.name} for ${Math.round(sessionData.duration / 60)} minutes.`,
+      });
+    } catch (error) {
+      console.error("Error saving session: ", error);
+      toast({
+        title: 'Error',
+        description: 'Could not save your session.',
+        variant: 'destructive'
+      })
+    }
   };
 
   const {
@@ -63,6 +84,14 @@ export default function Timer() {
   });
 
   const handleStart = () => {
+    if (!user) {
+      toast({
+        title: 'Please Log In',
+        description: 'Log in to start tracking your study sessions.',
+        action: <Button onClick={() => router.push('/login')}>Login</Button>
+      });
+      return;
+    }
     if (!selectedSubject) {
       toast({
         title: 'No Subject Selected',
@@ -82,29 +111,36 @@ export default function Timer() {
   
   const handleSubjectChange = (subjectId: string) => {
     if (isActive) return;
-    const subject = subjects.find(s => s.id === subjectId) || null;
+    const subject = subjects?.find(s => s.id === subjectId) || null;
     setSelectedSubject(subject);
   };
 
-  const handleAddSubject = (newSubject: Omit<Subject, 'id' | 'archived'>) => {
-    const subject: Subject = {
-      ...newSubject,
-      id: crypto.randomUUID(),
-      archived: false,
-    };
-    const updatedSubjects = [...subjects, subject];
-    setSubjects(updatedSubjects);
-    try {
-        localStorage.setItem('subjects', JSON.stringify(updatedSubjects));
-    } catch (error) {
-        console.error("Could not access localStorage:", error);
+  const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId'>) => {
+    if (!user) {
+        toast({
+            title: 'Please Log In',
+            description: 'You need to be logged in to add subjects.',
+            action: <Button onClick={() => router.push('/login')}>Login</Button>
+        });
+        return;
     }
-    setSelectedSubject(subject);
-    setAddSubjectOpen(false);
+    try {
+        const docRef = await addDoc(collection(firestore, "subjects"), {
+            ...newSubject,
+            userId: user.uid,
+            archived: false,
+        });
+        setSelectedSubject({ ...newSubject, id: docRef.id, archived: false, userId: user.uid });
+        setAddSubjectOpen(false);
+    } catch (e) {
+        console.error("Error adding document: ", e);
+        toast({
+            title: 'Error',
+            description: 'Could not add subject.',
+            variant: 'destructive'
+        })
+    }
   };
-
-
-  const activeSubjects = subjects.filter(s => !s.archived);
 
   return (
     <>
@@ -124,12 +160,12 @@ export default function Timer() {
 
         <div className="w-full space-y-4">
             <div className="flex gap-2">
-                <Select onValueChange={handleSubjectChange} disabled={isActive} value={selectedSubject?.id || ""}>
+                <Select onValueChange={handleSubjectChange} disabled={isActive || userLoading || subjectsLoading} value={selectedSubject?.id || ""}>
                     <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a subject to begin" />
+                    <SelectValue placeholder={user ? (subjectsLoading ? "Loading subjects..." : "Select a subject") : "Login to see subjects"} />
                     </SelectTrigger>
                     <SelectContent>
-                    {activeSubjects.map((subject) => (
+                    {user && subjects && subjects.map((subject) => (
                         <SelectItem key={subject.id} value={subject.id}>
                         <div className="flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: subject.color }}></span>
@@ -152,7 +188,6 @@ export default function Timer() {
             onPause={pause}
             onReset={() => {
               reset();
-              setSelectedSubject(null);
             }}
           />
         </div>

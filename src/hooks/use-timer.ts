@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 type UseTimerProps = {
   initialDuration: number;
-  onEnd: (sessionData: { duration: number; pauseCount: number }) => void;
+  onEnd: (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => void;
   timerType?: 'countdown' | 'stopwatch';
 };
 
@@ -35,7 +35,7 @@ export function useTimer({
             if (prevTime <= 1) {
               clearInterval(intervalRef.current!);
               setIsActive(false);
-              onEnd({ duration: duration, pauseCount });
+              onEnd({ duration: duration, pauseCount, startTime: startTimeRef.current });
               return 0;
             }
             return prevTime - 1;
@@ -65,13 +65,11 @@ export function useTimer({
   }, []);
 
   const pause = useCallback(() => {
-    setIsPaused((prev) => {
-      if (!prev) {
+    setIsPaused(true);
+    if(isActive) {
         setPauseCount((p) => p + 1);
-      }
-      return true;
-    });
-  }, []);
+    }
+  }, [isActive]);
 
   const reset = useCallback((newDuration?: number) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -79,11 +77,11 @@ export function useTimer({
     if (isActive) {
         const studiedDuration = timerType === 'countdown' ? duration - time : time;
         if (studiedDuration > 0) {
-            onEnd({ duration: studiedDuration, pauseCount });
+            onEnd({ duration: studiedDuration, pauseCount, startTime: startTimeRef.current });
         }
     }
 
-    const finalDuration = newDuration ?? (timerType === 'countdown' ? duration : 0);
+    const finalDuration = newDuration ?? (timerType === 'countdown' ? initialDuration : 0);
 
     setIsActive(false);
     setIsPaused(false);
@@ -93,7 +91,7 @@ export function useTimer({
         setDuration(finalDuration);
     }
     startTimeRef.current = null;
-  }, [duration, time, isActive, pauseCount, onEnd, timerType]);
+  }, [duration, time, isActive, pauseCount, onEnd, timerType, initialDuration]);
 
   return { time, isActive, isPaused, start, pause, reset, duration };
 }

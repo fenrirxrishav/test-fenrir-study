@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "URL of the user's profile picture." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp when the user was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Represents a study subject created by a user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the subject." },
+        "color": { "type": "string", "description": "A hex color code for the subject." },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "The priority of the subject." },
+        "archived": { "type": "boolean", "description": "Whether the subject is archived." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this subject." }
+      },
+      "required": ["name", "color", "archived", "userId"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Represents a single study session.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user for this session." },
+        "subjectId": { "type": "string", "description": "The ID of the subject studied." },
+        "mode": { "type": "string", "enum": ["pomodoro", "stopwatch"], "description": "The timer mode used." },
+        "startTime": { "type": "string", "format": "date-time", "description": "The start time of the session." },
+        "endTime": { "type": "string", "format": "date-time", "description": "The end time of the session." },
+        "duration": { "type": "number", "description": "The total duration of the session in seconds." },
+        "pauseCount": { "type": "number", "description": "Number of times the timer was paused." },
+        "status": { "type": "string", "enum": ["completed", "stopped"], "description": "The final status of the session." },
+        "focusScore": { "type": "number", "description": "A score representing focus during the session." }
+      },
+      "required": ["userId", "subjectId", "mode", "startTime", "duration", "status"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores public profiles for users."
+    },
+    "/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Stores study subjects created by users."
+    },
+    "/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/Session" },
+      "description": "Stores individual study session records for all users."
+    }
+  }
+}

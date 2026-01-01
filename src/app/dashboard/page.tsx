@@ -1,9 +1,27 @@
+"use client";
+
 import { Overview } from "@/components/app/dashboard/overview";
 import { RecentSessions } from "@/components/app/dashboard/recent-sessions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUser } from "@/firebase";
 import { Activity, Target, TrendingUp, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
+    const { user, loading } = useUser();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+    }, [user, loading, router]);
+
+    if (loading || !user) {
+        return <div>Loading...</div>; // Or a proper loading skeleton
+    }
+    
     return (
         <div className="flex-col md:flex">
             <div className="flex-1 space-y-4 p-8 pt-6">
@@ -15,9 +33,9 @@ export default function DashboardPage() {
                             <Activity className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">1h 15m</div>
+                            <div className="text-2xl font-bold">0h 0m</div>
                             <p className="text-xs text-muted-foreground">
-                                vs. 45m yesterday
+                                No sessions yet today
                             </p>
                         </CardContent>
                     </Card>
@@ -27,9 +45,9 @@ export default function DashboardPage() {
                             <Zap className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">92%</div>
+                            <div className="text-2xl font-bold">0%</div>
                             <p className="text-xs text-muted-foreground">
-                                +3% from last week
+                                No data available
                             </p>
                         </CardContent>
                     </Card>
@@ -39,9 +57,9 @@ export default function DashboardPage() {
                             <Target className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">75%</div>
+                            <div className="text-2xl font-bold">0%</div>
                             <p className="text-xs text-muted-foreground">
-                                1h 30m / 2h goal
+                                Set a goal to get started
                             </p>
                         </CardContent>
                     </Card>
@@ -51,9 +69,9 @@ export default function DashboardPage() {
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">5 Days</div>
+                            <div className="text-2xl font-bold">0 Days</div>
                             <p className="text-xs text-muted-foreground">
-                                Keep it up!
+                                Start a session!
                             </p>
                         </CardContent>
                     </Card>

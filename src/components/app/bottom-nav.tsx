@@ -17,24 +17,31 @@ export default function BottomNav() {
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  // Hide nav on login page
+  if (pathname === '/login') {
+    return null;
+  }
+
   return (
-    <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="grid h-16 grid-cols-5">
-        {routes.map((route) => (
-          <Link
-            key={route.href}
-            href={route.href}
-            className={cn(
-              'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary',
-              pathname === route.href
-                ? 'text-primary'
-                : 'text-muted-foreground'
-            )}
-          >
-            <route.icon className="h-5 w-5" />
-            <span>{route.label}</span>
-          </Link>
-        ))}
+    <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center">
+        <div className="w-full max-w-xs mx-auto">
+            <div className="grid h-16 grid-cols-5 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-full shadow-lg">
+                {routes.map((route) => (
+                <Link
+                    key={route.href}
+                    href={route.href}
+                    className={cn(
+                    'flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary rounded-full',
+                    pathname === route.href
+                        ? 'text-primary'
+                        : 'text-muted-foreground'
+                    )}
+                >
+                    <route.icon className="h-5 w-5" />
+                    <span>{route.label}</span>
+                </Link>
+                ))}
+            </div>
       </div>
     </div>
   );
