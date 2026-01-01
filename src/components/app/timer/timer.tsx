@@ -55,6 +55,7 @@ export default function Timer() {
     start,
     pause,
     reset,
+    duration,
   } = useTimer({ 
     initialDuration: modeSettings[mode].duration, 
     onEnd: handleSessionEnd, 
@@ -119,7 +120,7 @@ export default function Timer() {
           </TabsList>
         </Tabs>
         
-        <TimerDisplay time={time} subjectName={selectedSubject?.name || 'Select Subject'} />
+        <TimerDisplay time={time} subjectName={selectedSubject?.name || 'Select Subject'} duration={duration} timerType={mode} />
 
         <div className="w-full space-y-4">
             <div className="flex gap-2">

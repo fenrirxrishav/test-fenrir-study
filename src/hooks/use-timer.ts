@@ -95,5 +95,5 @@ export function useTimer({
     startTimeRef.current = null;
   }, [duration, time, isActive, pauseCount, onEnd, timerType]);
 
-  return { time, isActive, isPaused, start, pause, reset };
+  return { time, isActive, isPaused, start, pause, reset, duration };
 }

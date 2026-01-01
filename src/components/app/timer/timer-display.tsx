@@ -3,22 +3,49 @@ import { cn } from "@/lib/utils";
 interface TimerDisplayProps {
   time: number;
   subjectName?: string;
+  duration: number;
+  timerType: 'countdown' | 'stopwatch';
 }
 
 const formatTime = (seconds: number) => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+  const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-export function TimerDisplay({ time, subjectName }: TimerDisplayProps) {
+const STROKE_WIDTH = 8;
+const RADIUS = 112; // h-72 w-72 -> 288px. Half is 144. Inset-2 -> 140. Border-4 -> 132. SVG inset is 0. Let's use 112.
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+export function TimerDisplay({ time, subjectName, duration, timerType }: TimerDisplayProps) {
+
+  const getProgress = () => {
+    if (timerType === 'stopwatch' || duration === 0) {
+      return 100;
+    }
+    return (time / duration) * 100;
+  };
+  
+  const progress = getProgress();
+  const strokeDashoffset = CIRCUMFERENCE * (1 - progress / 100);
+
   return (
     <div className="relative flex h-64 w-64 items-center justify-center rounded-full bg-background p-4 shadow-inner md:h-72 md:w-72">
-       <div className="absolute inset-2 rounded-full border-4 border-muted"></div>
+       <div className="absolute inset-2 rounded-full border-4 border-muted/20"></div>
        <div className="absolute inset-0 flex items-center justify-center">
             <svg className="h-full w-full -rotate-90 transform">
-                {/* This circle is for the progress */}
+                <circle
+                    className="text-primary transition-all duration-300 ease-linear"
+                    stroke="currentColor"
+                    fill="transparent"
+                    strokeWidth={STROKE_WIDTH}
+                    strokeLinecap="round"
+                    cx="50%"
+                    cy="50%"
+                    r={RADIUS}
+                    strokeDasharray={CIRCUMFERENCE}
+                    strokeDashoffset={strokeDashoffset}
+                />
             </svg>
         </div>
 

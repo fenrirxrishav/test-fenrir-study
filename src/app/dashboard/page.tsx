@@ -1,24 +1,13 @@
 import { Overview } from "@/components/app/dashboard/overview";
 import { RecentSessions } from "@/components/app/dashboard/recent-sessions";
-import { ThemeToggle } from "@/components/app/theme-toggle";
-import { UserNav } from "@/components/app/user-nav";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Target, TrendingUp, Zap } from "lucide-react";
 
 export default function DashboardPage() {
     return (
         <div className="flex-col md:flex">
-            <div className="border-b">
-                <div className="container flex h-16 items-center px-4">
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <div className="ml-auto flex items-center space-x-4">
-                        <ThemeToggle />
-                        <UserNav />
-                    </div>
-                </div>
-            </div>
-            <div className="container flex-1 space-y-4 p-8 pt-6">
+            <div className="flex-1 space-y-4 p-8 pt-6">
+                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

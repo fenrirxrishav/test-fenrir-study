@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Home, LayoutDashboard, Book, History, Settings } from 'lucide-react';
-import { ThemeToggle } from './theme-toggle';
-import { UserNav } from './user-nav';
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -20,7 +18,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
+    <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="grid h-16 grid-cols-5">
         {routes.map((route) => (
           <Link
