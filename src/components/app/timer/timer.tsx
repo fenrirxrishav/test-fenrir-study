@@ -7,14 +7,14 @@ import { TimerDisplay } from './timer-display';
 import { TimerControls } from './timer-controls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Subject } from '@/lib/definitions';
+import { Subject, Session } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Palette, PanelLeft, PanelTop } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { addDoc, collection, serverTimestamp, query, where } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { StyleSelector } from './style-selector';
@@ -51,23 +51,25 @@ export default function Timer() {
   }, [subjects, selectedSubjectId]);
 
   const handleSessionEnd = async (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => {
-    if (!user || !selectedSubjectId || !sessionData.startTime || sessionData.duration < 5) return;
+    if (!user || !selectedSubjectId || !sessionData.startTime || sessionData.duration < 5 || !firestore) return;
     
     // Calculate a simple focus score. 100 is perfect, reduced by pauses.
     const focusScore = Math.max(0, 100 - (sessionData.pauseCount * 5));
 
     try {
-      await addDoc(collection(firestore, 'sessions'), {
+      const sessionPayload: Omit<Session, 'id' | 'endTime'> & {endTime: any} = {
         userId: user.uid,
         subjectId: selectedSubjectId,
         mode: mode,
         startTime: new Date(sessionData.startTime).toISOString(),
-        endTime: serverTimestamp(),
         duration: sessionData.duration,
         pauseCount: sessionData.pauseCount,
         status: 'completed',
         focusScore: focusScore,
-      });
+        endTime: serverTimestamp(),
+      }
+
+      await addDoc(collection(firestore, 'sessions'), sessionPayload);
 
       toast({
         title: "Session Saved!",

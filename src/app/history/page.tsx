@@ -77,7 +77,7 @@ export default function HistoryPage() {
                                     return (
                                         <TableRow key={session.id}>
                                             <TableCell className="font-medium flex items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: subject?.color }}></div>
+                                                {subject && <div className="h-2 w-2 rounded-full" style={{ backgroundColor: subject?.color }}></div>}
                                                 {subject?.name || 'Unknown'}
                                             </TableCell>
                                             <TableCell>{format(new Date(session.startTime), 'MMM d, yyyy')}</TableCell>
@@ -89,16 +89,11 @@ export default function HistoryPage() {
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                                        <Button variant="ghost" className="h-8 w-8 p-0" disabled>
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem disabled>Edit</DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive" disabled>Delete</DropdownMenuItem>
-                                                    </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
                                         </TableRow>

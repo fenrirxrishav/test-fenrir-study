@@ -3,11 +3,11 @@
 
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, type User as FirebaseAuthUser } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc, type DocumentReference } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useFirebase } from '../provider';
 import { type User as AppUser } from '@/lib/definitions';
 import { errorEmitter } from '../error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '../errors';
+import { FirestorePermissionError } from '../errors';
 
 export function useUser() {
   const { auth, firestore, loading: firebaseLoading } = useFirebase();
@@ -33,43 +33,46 @@ export function useUser() {
           const userSnap = await getDoc(userRef);
 
           if (!userSnap.exists()) {
-            const newUser: Omit<AppUser, 'id'| 'avatarUrl'> = {
+            const newUser: Omit<AppUser, 'id'> = {
               name: authUser.displayName || 'Anonymous',
-              email: authJUser.email || '',
+              email: authUser.email || '',
+              avatarUrl: authUser.photoURL || '',
             }
             const userData = {
                 ...newUser,
-                uid: authUser.uid,
-                photoURL: authUser.photoURL,
+                uid: authUser.uid, // Security rule requires uid to match authUser.uid on create
                 createdAt: serverTimestamp(),
                 lastLogin: serverTimestamp(),
             };
             
-            // Create user profile with contextual error handling
-            setDoc(userRef, userData).catch(async (serverError) => {
+            setDoc(userRef, userData).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'create',
                     requestResourceData: userData,
-                } satisfies SecurityRuleContext);
+                });
                 errorEmitter.emit('permission-error', permissionError);
             });
 
           } else {
-            // Update last login with contextual error handling
             const updateData = { lastLogin: serverTimestamp() };
-            setDoc(userRef, updateData, { merge: true }).catch(async (serverError) => {
+            setDoc(userRef, updateData, { merge: true }).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'update',
                     requestResourceData: updateData,
-                } satisfies SecurityRuleContext);
+                });
                 errorEmitter.emit('permission-error', permissionError);
             });
           }
         } catch (e) {
-            // This will catch errors from getDoc, which might also be a permission error
-            console.error("An unexpected error occurred in useUser:", e);
+            // This can happen if getDoc is denied by security rules.
+            // Though our rules allow reading own doc, it's good practice to handle.
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
         }
 
         setUser(authUser);
