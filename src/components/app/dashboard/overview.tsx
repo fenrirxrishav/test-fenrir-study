@@ -1,48 +1,40 @@
+
 "use client"
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { useState, useEffect } from 'react';
+import { Session } from "@/lib/definitions";
+import { useMemo } from 'react';
+import { format, subDays, startOfDay } from 'date-fns';
 
-const generateData = () => [
-  {
-    name: "Mon",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Tue",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Wed",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Thu",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Fri",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Sat",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-  {
-    name: "Sun",
-    total: Math.floor(Math.random() * 5000) + 1000,
-  },
-];
+interface OverviewProps {
+  sessions: Session[] | null;
+}
+
+export function Overview({ sessions }: OverviewProps) {
+  const data = useMemo(() => {
+    const weeklyData = Array.from({ length: 7 }).map((_, i) => {
+        const date = startOfDay(subDays(new Date(), 6 - i));
+        return {
+            name: format(date, 'E'), // "Mon", "Tue", etc.
+            total: 0,
+        };
+    });
+
+    if (sessions) {
+        sessions.forEach(session => {
+            const sessionDateStr = format(startOfDay(new Date(session.startTime)), 'E');
+            const dayData = weeklyData.find(d => d.name === sessionDateStr);
+            if (dayData) {
+                dayData.total += session.duration; // duration in seconds
+            }
+        });
+    }
+    
+    return weeklyData;
+  }, [sessions]);
 
 
-export function Overview() {
-  const [data, setData] = useState<any[]>([]);
-
-  useEffect(() => {
-    setData(generateData());
-  }, []);
-
-  if (data.length === 0) {
+  if (!sessions) {
       return (
         <div style={{ height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div>Loading chart...</div>
@@ -65,7 +57,7 @@ export function Overview() {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `${value / 60}m`}
+          tickFormatter={(value) => `${Math.round(value / 60)}m`}
         />
         <Tooltip
             contentStyle={{
@@ -73,6 +65,7 @@ export function Overview() {
                 borderColor: 'hsl(var(--border))'
             }}
             cursor={{ fill: 'hsl(var(--muted))' }}
+            formatter={(value: number) => [`${Math.round(value/60)} minutes`, 'Time Studied']}
         />
         <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
       </BarChart>

@@ -1,57 +1,78 @@
+
 "use client";
 
 import { Avatar } from "@/components/ui/avatar";
-import { useCollection, useFirestore, useUser } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { Subject, Session } from "@/lib/definitions";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 export function RecentSessions() {
     const { user } = useUser();
     const firestore = useFirestore();
     const [recentSessions, setRecentSessions] = useState<Session[]>([]);
-    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [subjects, setSubjects] = useState<Map<string, Subject>>(new Map());
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchData = async () => {
-            if (!user || !firestore) {
-                setLoading(false);
-                return;
-            };
-            setLoading(true);
+        if (!user || !firestore) {
+            setLoading(false);
+            return;
+        }
 
-            try {
-                // Fetch recent sessions
-                const sessionsQuery = query(
-                    collection(firestore, 'sessions'), 
-                    where('userId', '==', user.uid), 
-                    orderBy('startTime', 'desc'), 
-                    limit(5)
-                );
-                const sessionSnap = await getDocs(sessionsQuery);
+        setLoading(true);
+        let sessionsUnsubscribe: Unsubscribe | undefined;
+        let subjectsUnsubscribe: Unsubscribe | undefined;
+
+        try {
+            // Main query for recent sessions
+            const sessionsQuery = query(
+                collection(firestore, 'sessions'),
+                where('userId', '==', user.uid),
+                orderBy('startTime', 'desc'),
+                limit(5)
+            );
+            
+            sessionsUnsubscribe = onSnapshot(sessionsQuery, (sessionSnap) => {
                 const sessions = sessionSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
                 setRecentSessions(sessions);
 
-                // Fetch associated subjects
-                if (sessions.length > 0) {
-                    const subjectIds = [...new Set(sessions.map(s => s.subjectId))];
+                // Now fetch the subjects for these sessions
+                const subjectIds = [...new Set(sessions.map(s => s.subjectId))];
+                if (subjectIds.length > 0) {
+                    // Unsubscribe from old subject listener if it exists
+                    if (subjectsUnsubscribe) subjectsUnsubscribe();
+                    
                     const subjectsQuery = query(collection(firestore, 'subjects'), where('__name__', 'in', subjectIds));
-                    const subjectSnap = await getDocs(subjectsQuery);
-                    const subjectMap = subjectSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Subject));
-                    setSubjects(subjectMap);
+                    subjectsUnsubscribe = onSnapshot(subjectsQuery, (subjectSnap) => {
+                        const subjectMap = new Map<string, Subject>();
+                        subjectSnap.forEach(doc => {
+                            subjectMap.set(doc.id, { id: doc.id, ...doc.data() } as Subject);
+                        });
+                        setSubjects(subjectMap);
+                        setLoading(false);
+                    });
+                } else {
+                    setLoading(false);
                 }
-            } catch (error) {
-                console.error("Error fetching recent sessions and subjects:", error);
-            } finally {
+            }, (error) => {
+                console.error("Error fetching recent sessions:", error);
                 setLoading(false);
-            }
+            });
+
+        } catch (error) {
+            console.error("Error setting up listeners:", error);
+            setLoading(false);
         }
-        fetchData();
+
+        return () => {
+            if (sessionsUnsubscribe) sessionsUnsubscribe();
+            if (subjectsUnsubscribe) subjectsUnsubscribe();
+        };
 
     }, [user, firestore]);
     
-    const getSubjectById = (id: string) => subjects?.find(s => s.id === id);
+    const getSubjectById = (id: string) => subjects.get(id);
 
     if (loading) {
         return <div>Loading recent sessions...</div>
