@@ -1,10 +1,11 @@
+
 "use client";
 
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Auth } from 'firebase/auth';
 import { Firestore } from 'firebase/firestore';
-import { app, auth, firestore } from './config';
+import { initializeFirebase } from './config';
 
 interface FirebaseContextType {
   app: FirebaseApp | undefined;
@@ -15,8 +16,17 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined });
 
 export function FirebaseProvider({ children }: { children: ReactNode }) {
-    // Directly use the imported services. The config file already handles client-side-only initialization.
-    const firebaseServices = { app, auth, firestore };
+    const [firebaseServices, setFirebaseServices] = useState<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined });
+
+    useEffect(() => {
+        // Initialize Firebase on the client and update the state
+        const services = initializeFirebase();
+        setFirebaseServices({
+            app: services.app,
+            auth: services.auth,
+            firestore: services.firestore,
+        });
+    }, []);
 
     return (
         <FirebaseContext.Provider value={firebaseServices}>

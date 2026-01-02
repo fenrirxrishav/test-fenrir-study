@@ -1,3 +1,4 @@
+
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -16,16 +17,24 @@ let app: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
 
-// This check ensures that Firebase is only initialized on the client side.
-if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-  try {
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    firestore = getFirestore(app);
-  } catch(e) {
-    console.error("Firebase initialization error", e);
-  }
+function initializeFirebase() {
+    if (typeof window !== 'undefined') {
+        if (!getApps().length) {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                firestore = getFirestore(app);
+            } catch(e) {
+                console.error("Firebase initialization error", e);
+            }
+        } else {
+            app = getApp();
+            auth = getAuth(app);
+            firestore = getFirestore(app);
+        }
+    }
+    return { app, auth, firestore };
 }
 
-// The exports are now guarded and will be undefined on the server.
-export { app, auth, firestore };
+// The exports are now guarded and will be undefined on the server until initialized on the client.
+export { initializeFirebase };
