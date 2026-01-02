@@ -13,25 +13,25 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      // Only the authenticated owner of the document can read or write to it.
+      // A new user can create their own profile document.
+      allow read, update, delete: if isSignedIn() && isOwner(userId);
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
     }
 
     match /subjects/{subjectId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // A user can read, create, update, or delete a subject if the document's
+      // userId matches their own auth uid.
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /sessions/{sessionId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Users should not be able to update or delete sessions to maintain data integrity
-      allow update: if false;
-      allow delete: if false;
+      // A user can read or create a session if the document's userId matches their uid.
+      allow read, create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Sessions are immutable to maintain data integrity.
+      allow update, delete: if false;
     }
   }
 }
