@@ -6,6 +6,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Auth } from 'firebase/auth';
 import { Firestore } from 'firebase/firestore';
 import { initializeFirebase } from './config';
+import FirebaseErrorListener from '@/components/FirebaseErrorListener';
 
 interface FirebaseContextType {
   app: FirebaseApp | undefined;
@@ -21,12 +22,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const services = initializeFirebase();
-        setFirebaseServices({
-            app: services.app,
-            auth: services.auth,
-            firestore: services.firestore,
-        });
+        const { app, auth, firestore } = initializeFirebase();
+        setFirebaseServices({ app, auth, firestore });
         setLoading(false);
     }, []);
 
@@ -39,7 +36,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
 
     return (
         <FirebaseContext.Provider value={value}>
-        {!loading ? children : null /* Or a global loader */}
+          {process.env.NODE_ENV === 'development' && <FirebaseErrorListener />}
+          {!loading ? children : null /* Or a global loader */}
         </FirebaseContext.Provider>
     );
 }

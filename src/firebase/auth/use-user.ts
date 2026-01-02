@@ -2,14 +2,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, type User as FirebaseAuthUser } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp, getDoc, type DocumentReference } from 'firebase/firestore';
 import { useFirebase } from '../provider';
-import type { User as AppUser } from '@/lib/definitions';
+import { type User as AppUser } from '@/lib/definitions';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '../errors';
 
 export function useUser() {
   const { auth, firestore, loading: firebaseLoading } = useFirebase();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FirebaseAuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,33 +28,50 @@ export function useUser() {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         const userRef = doc(firestore, `users/${authUser.uid}`);
-        const userSnap = await getDoc(userRef);
+        
+        try {
+          const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists()) {
-          // New user, create their profile document
-          try {
-            const newUser: Omit<AppUser, 'id'> = {
+          if (!userSnap.exists()) {
+            const newUser: Omit<AppUser, 'id'| 'avatarUrl'> = {
               name: authUser.displayName || 'Anonymous',
-              email: authUser.email || '',
-              avatarUrl: authUser.photoURL || '',
+              email: authJUser.email || '',
             }
-            await setDoc(userRef, {
-              ...newUser,
-              uid: authUser.uid,
-              createdAt: serverTimestamp(),
-              lastLogin: serverTimestamp(),
+            const userData = {
+                ...newUser,
+                uid: authUser.uid,
+                photoURL: authUser.photoURL,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp(),
+            };
+            
+            // Create user profile with contextual error handling
+            setDoc(userRef, userData).catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userRef.path,
+                    operation: 'create',
+                    requestResourceData: userData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
             });
-          } catch(e) {
-            console.error("Error creating user profile:", e);
+
+          } else {
+            // Update last login with contextual error handling
+            const updateData = { lastLogin: serverTimestamp() };
+            setDoc(userRef, updateData, { merge: true }).catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
           }
-        } else {
-          // Existing user, update last login
-          try {
-            await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
-          } catch (e) {
-            console.error("Error updating last login:", e);
-          }
+        } catch (e) {
+            // This will catch errors from getDoc, which might also be a permission error
+            console.error("An unexpected error occurred in useUser:", e);
         }
+
         setUser(authUser);
       } else {
         setUser(null);
