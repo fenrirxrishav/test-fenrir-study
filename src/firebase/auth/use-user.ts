@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { useAuth, useFirestore } from '../provider';
+import { useFirebase } from '../provider';
+import type { User as AppUser } from '@/lib/definitions';
 
 export function useUser() {
   const { auth, firestore, loading: firebaseLoading } = useFirebase();
@@ -30,11 +31,14 @@ export function useUser() {
         if (!userSnap.exists()) {
           // New user, create their profile document
           try {
+            const newUser: Omit<AppUser, 'id'> = {
+              name: authUser.displayName || 'Anonymous',
+              email: authUser.email || '',
+              avatarUrl: authUser.photoURL || '',
+            }
             await setDoc(userRef, {
+              ...newUser,
               uid: authUser.uid,
-              email: authUser.email,
-              displayName: authUser.displayName,
-              photoURL: authUser.photoURL,
               createdAt: serverTimestamp(),
               lastLogin: serverTimestamp(),
             });
