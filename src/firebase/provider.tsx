@@ -7,22 +7,16 @@ import { Firestore } from 'firebase/firestore';
 import { app, auth, firestore } from './config';
 
 interface FirebaseContextType {
-  app: FirebaseApp | null;
-  auth: Auth | null;
-  firestore: Firestore | null;
+  app: FirebaseApp | undefined;
+  auth: Auth | undefined;
+  firestore: Firestore | undefined;
 }
 
-const FirebaseContext = createContext<FirebaseContextType>({ app: null, auth: null, firestore: null });
+const FirebaseContext = createContext<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined });
 
 export function FirebaseProvider({ children }: { children: ReactNode }) {
-    const [firebaseServices, setFirebaseServices] = useState<FirebaseContextType>({ app: null, auth: null, firestore: null });
-
-    useEffect(() => {
-        // This effect runs only on the client, ensuring app, auth, and firestore are available.
-        if (app && auth && firestore) {
-            setFirebaseServices({ app, auth, firestore });
-        }
-    }, []);
+    // Directly use the imported services. The config file already handles client-side-only initialization.
+    const firebaseServices = { app, auth, firestore };
 
     return (
         <FirebaseContext.Provider value={firebaseServices}>
@@ -39,17 +33,17 @@ export const useFirebase = (): FirebaseContextType => {
   return context;
 };
 
-export const useFirebaseApp = (): FirebaseApp | null => {
+export const useFirebaseApp = (): FirebaseApp | undefined => {
   const { app } = useFirebase();
   return app;
 }
 
-export const useAuth = (): Auth | null => {
+export const useAuth = (): Auth | undefined => {
   const { auth } = useFirebase();
   return auth;
 }
 
-export const useFirestore = (): Firestore | null => {
+export const useFirestore = (): Firestore | undefined => {
   const { firestore } = useFirebase();
   return firestore;
 }
