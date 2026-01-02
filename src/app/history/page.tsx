@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useUser, useCollection, useFirestore } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, orderBy } from "firebase/firestore";
 import { Subject, Session } from "@/lib/definitions";
+import { format } from "date-fns";
 
 function formatDuration(seconds: number) {
     const h = Math.floor(seconds / 3600);
@@ -28,11 +30,16 @@ export default function HistoryPage() {
     const router = useRouter();
     const firestore = useFirestore();
 
-    const subjectsQuery = user ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid)) : null;
+    const subjectsQuery = useMemo(() => user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid)) : null, [user, firestore]);
     const { data: subjects, loading: subjectsLoading } = useCollection<Subject>(subjectsQuery);
 
-    const sessionsQuery = user ? query(collection(firestore, 'sessions'), where('userId', '==', user.uid)) : null;
+    const sessionsQuery = useMemo(() => user && firestore ? query(collection(firestore, 'sessions'), where('userId', '==', user.uid), orderBy('startTime', 'desc')) : null, [user, firestore]);
     const { data: sessions, loading: sessionsLoading } = useCollection<Session>(sessionsQuery);
+    
+    const subjectsMap = useMemo(() => {
+        if (!subjects) return new Map<string, Subject>();
+        return new Map(subjects.map(s => [s.id, s]));
+    }, [subjects]);
 
     useEffect(() => {
         if (!userLoading && !user) {
@@ -40,10 +47,9 @@ export default function HistoryPage() {
         }
     }, [user, userLoading, router]);
 
-    const getSubjectById = (id: string) => subjects?.find(s => s.id === id);
 
     if (userLoading || subjectsLoading || sessionsLoading || !user) {
-        return <div>Loading...</div>
+        return <div className="container mx-auto p-4 md:p-8">Loading history...</div>
     }
 
     return (
@@ -67,17 +73,17 @@ export default function HistoryPage() {
                         <TableBody>
                             {sessions && sessions.length > 0 ? (
                                 sessions.map((session) => {
-                                    const subject = getSubjectById(session.subjectId);
+                                    const subject = subjectsMap.get(session.subjectId);
                                     return (
                                         <TableRow key={session.id}>
                                             <TableCell className="font-medium flex items-center gap-2">
                                                 <div className="h-2 w-2 rounded-full" style={{ backgroundColor: subject?.color }}></div>
                                                 {subject?.name || 'Unknown'}
                                             </TableCell>
-                                            <TableCell>{new Date(session.startTime).toLocaleDateString()}</TableCell>
+                                            <TableCell>{format(new Date(session.startTime), 'MMM d, yyyy')}</TableCell>
                                             <TableCell>{formatDuration(session.duration)}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline">{session.focusScore}%</Badge>
+                                                {session.focusScore > 0 ? <Badge variant="outline">{session.focusScore}%</Badge> : <Badge variant="secondary">-</Badge>}
                                             </TableCell>
                                             <TableCell className="capitalize">{session.status}</TableCell>
                                             <TableCell className="text-right">
@@ -90,8 +96,8 @@ export default function HistoryPage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                                        <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive" disabled>Delete</DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -100,7 +106,7 @@ export default function HistoryPage() {
                                 })
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center">No sessions recorded yet.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24">No sessions recorded yet.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>

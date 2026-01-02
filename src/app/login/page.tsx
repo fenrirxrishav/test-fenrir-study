@@ -17,7 +17,7 @@ export default function LoginPage() {
     const handleGoogleSignIn = async () => {
         if (!auth) {
              toast({
-                title: "Authentication service is not available",
+                title: "Authentication service is not ready",
                 description: "Please try again in a moment.",
                 variant: "destructive",
             });
@@ -33,7 +33,6 @@ export default function LoginPage() {
             });
             router.push('/dashboard');
         } catch (error: any) {
-            // Don't show an error toast if the user closes the popup
             if (error.code === 'auth/popup-closed-by-user') {
                 return;
             }
@@ -48,7 +47,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex h-full items-center justify-center">
+        <div className="flex h-full items-center justify-center p-4">
             <Card className="w-full max-w-sm">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Welcome Back!</CardTitle>
@@ -58,8 +57,8 @@ export default function LoginPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-                            <FcGoogle className="mr-2 h-4 w-4" />
+                        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={!auth}>
+                           {auth ? <FcGoogle className="mr-2 h-4 w-4" /> : <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-t-transparent border-primary"></div>}
                             Sign in with Google
                         </Button>
                     </div>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
+import React, { createContext, useContext, ReactNode, useEffect, useState, useMemo } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Auth } from 'firebase/auth';
 import { Firestore } from 'firebase/firestore';
@@ -11,26 +11,35 @@ interface FirebaseContextType {
   app: FirebaseApp | undefined;
   auth: Auth | undefined;
   firestore: Firestore | undefined;
+  loading: boolean;
 }
 
-const FirebaseContext = createContext<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined });
+const FirebaseContext = createContext<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined, loading: true });
 
 export function FirebaseProvider({ children }: { children: ReactNode }) {
-    const [firebaseServices, setFirebaseServices] = useState<FirebaseContextType>({ app: undefined, auth: undefined, firestore: undefined });
+    const [firebaseServices, setFirebaseServices] = useState<{ app?: FirebaseApp, auth?: Auth, firestore?: Firestore }>({});
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Initialize Firebase on the client and update the state
         const services = initializeFirebase();
         setFirebaseServices({
             app: services.app,
             auth: services.auth,
             firestore: services.firestore,
         });
+        setLoading(false);
     }, []);
 
+    const value = useMemo(() => ({
+        app: firebaseServices.app,
+        auth: firebaseServices.auth,
+        firestore: firebaseServices.firestore,
+        loading: loading
+    }), [firebaseServices, loading]);
+
     return (
-        <FirebaseContext.Provider value={firebaseServices}>
-        {children}
+        <FirebaseContext.Provider value={value}>
+        {!loading ? children : null /* Or a global loader */}
         </FirebaseContext.Provider>
     );
 }

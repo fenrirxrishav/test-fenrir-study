@@ -10,9 +10,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { collection, query, where } from "firebase/firestore";
 import { Session } from "@/lib/definitions";
-import { subDays, startOfDay, endOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
 
 function formatDuration(seconds: number) {
+    if (seconds < 60) return "0m";
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     if (h > 0) return `${h}h ${m}m`;
@@ -32,58 +33,66 @@ export default function DashboardPage() {
 
     const sessionsQuery = useMemo(() => {
         if (!user || !firestore) return null;
-        // Fetch sessions from the last 7 days for dashboard calculations
-        const oneWeekAgo = subDays(new Date(), 7);
         return query(
             collection(firestore, 'sessions'),
-            where('userId', '==', user.uid),
-            where('startTime', '>=', oneWeekAgo.toISOString())
+            where('userId', '==', user.uid)
         );
     }, [user, firestore]);
 
-    const { data: sessions, loading: sessionsLoading } = useCollection<Session>(sessionsQuery);
+    const { data: allSessions, loading: sessionsLoading } = useCollection<Session>(sessionsQuery);
 
-    const todayStats = useMemo(() => {
-        if (!sessions) return { timeStudied: 0, focusScore: 0 };
-        const todayStart = startOfDay(new Date());
-        const todaySessions = sessions.filter(s => new Date(s.startTime) >= todayStart);
+    const { todayStats, sevenDaySessions } = useMemo(() => {
+        if (!allSessions) return { todayStats: { timeStudied: 0, focusScore: 0 }, sevenDaySessions: [] };
         
+        const todayStart = startOfDay(new Date());
+        const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+
+        const todaySessions = allSessions.filter(s => new Date(s.startTime) >= todayStart);
+        const recentSessions = allSessions.filter(s => new Date(s.startTime) >= sevenDaysAgo);
+
         const timeStudied = todaySessions.reduce((acc, s) => acc + s.duration, 0);
-        const focusScore = todaySessions.length > 0
-            ? Math.round(todaySessions.reduce((acc, s) => acc + s.focusScore, 0) / todaySessions.length)
+        
+        const validFocusSessions = todaySessions.filter(s => s.focusScore > 0);
+        const focusScore = validFocusSessions.length > 0
+            ? Math.round(validFocusSessions.reduce((acc, s) => acc + s.focusScore, 0) / validFocusSessions.length)
             : 0;
             
-        return { timeStudied, focusScore };
-    }, [sessions]);
+        return { 
+            todayStats: { timeStudied, focusScore },
+            sevenDaySessions: recentSessions
+        };
+    }, [allSessions]);
     
-    // Placeholder for streak calculation - would require more complex logic
     const consistencyStreak = useMemo(() => {
-        if (!sessions || sessions.length === 0) return 0;
+        if (!allSessions || allSessions.length === 0) return 0;
         
-        const dates = [...new Set(sessions.map(s => startOfDay(new Date(s.startTime)).getTime()))].sort((a,b) => b - a);
-        if (dates.length === 0) return 0;
+        const sessionDates = [...new Set(allSessions.map(s => startOfDay(new Date(s.startTime)).getTime()))].sort((a,b) => b - a);
+        
+        if (sessionDates.length === 0) return 0;
 
         let streak = 0;
         const today = startOfDay(new Date());
         const yesterday = startOfDay(subDays(new Date(), 1));
-
-        // Check if there is a session today or yesterday to start the streak from
-        if(dates[0] === today.getTime() || dates[0] === yesterday.getTime()){
+        
+        // A streak can start today or yesterday
+        if(sessionDates[0] === today.getTime() || sessionDates[0] === yesterday.getTime()){
             streak = 1;
-            let lastDate = new Date(dates[0]);
-            for(let i=1; i < dates.length; i++){
-                const currentDate = new Date(dates[i]);
+            let lastDate = new Date(sessionDates[0]);
+            for(let i=1; i < sessionDates.length; i++){
+                const currentDate = new Date(sessionDates[i]);
                 const expectedPreviousDay = startOfDay(subDays(lastDate, 1));
                 if(currentDate.getTime() === expectedPreviousDay.getTime()){
                     streak++;
                     lastDate = currentDate;
-                } else {
+                } else if(currentDate.getTime() < expectedPreviousDay.getTime()) {
+                    // Gap in dates, so streak is broken
                     break;
                 }
+                // If currentDate is the same as lastDate, we just continue
             }
         }
         return streak;
-    }, [sessions]);
+    }, [allSessions]);
 
 
     if (userLoading || sessionsLoading || !user) {
@@ -98,7 +107,7 @@ export default function DashboardPage() {
     return (
         <div className="flex-col md:flex">
             <div className="flex-1 space-y-4 p-8 pt-6">
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Welcome, {user.displayName?.split(' ')[0]}!</h1>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -108,7 +117,7 @@ export default function DashboardPage() {
                         <CardContent>
                             <div className="text-2xl font-bold">{formatDuration(todayStats.timeStudied)}</div>
                             <p className="text-xs text-muted-foreground">
-                                {sessions && sessions.length > 0 ? `+${Math.round(todayStats.timeStudied / sessions.reduce((acc, s) => acc + s.duration, 1) * 100)}% from last week` : 'No sessions yet today'}
+                                Total time logged today.
                             </p>
                         </CardContent>
                     </Card>
@@ -118,9 +127,9 @@ export default function DashboardPage() {
                             <Zap className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{todayStats.focusScore}%</div>
+                            <div className="text-2xl font-bold">{todayStats.focusScore > 0 ? `${todayStats.focusScore}%` : '-'}</div>
                              <p className="text-xs text-muted-foreground">
-                                Based on sessions logged today
+                                Based on completed sessions.
                             </p>
                         </CardContent>
                     </Card>
@@ -142,9 +151,9 @@ export default function DashboardPage() {
                             <TrendingUp className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{consistencyStreak} Days</div>
+                            <div className="text-2xl font-bold">{consistencyStreak} {consistencyStreak === 1 ? 'Day' : 'Days'}</div>
                             <p className="text-xs text-muted-foreground">
-                                Keep it up!
+                                Keep studying every day!
                             </p>
                         </CardContent>
                     </Card>
@@ -155,7 +164,7 @@ export default function DashboardPage() {
                             <CardTitle>Weekly Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="pl-2">
-                            <Overview sessions={sessions} />
+                            <Overview sessions={sevenDaySessions} />
                         </CardContent>
                     </Card>
                     <Card className="col-span-1 lg:col-span-3">

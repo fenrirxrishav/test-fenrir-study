@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,14 +7,17 @@ import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '../provider';
 
 export function useUser() {
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { auth, firestore, loading: firebaseLoading } = useFirebase();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (firebaseLoading) {
+      setLoading(true);
+      return;
+    }
+    
     if (!auth || !firestore) {
-      // Firebase services are not available (e.g., during server-side rendering).
       setLoading(false);
       return;
     }
@@ -25,17 +29,25 @@ export function useUser() {
 
         if (!userSnap.exists()) {
           // New user, create their profile document
-          await setDoc(userRef, {
-            uid: authUser.uid,
-            email: authUser.email,
-            displayName: authUser.displayName,
-            photoURL: authUser.photoURL,
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-          }, { merge: true });
+          try {
+            await setDoc(userRef, {
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp(),
+            });
+          } catch(e) {
+            console.error("Error creating user profile:", e);
+          }
         } else {
           // Existing user, update last login
-          await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+          try {
+            await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+          } catch (e) {
+            console.error("Error updating last login:", e);
+          }
         }
         setUser(authUser);
       } else {
@@ -45,7 +57,7 @@ export function useUser() {
     });
 
     return () => unsubscribe();
-  }, [auth, firestore]);
+  }, [auth, firestore, firebaseLoading]);
 
   return { user, loading };
 }

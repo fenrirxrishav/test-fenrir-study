@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTimer } from '@/hooks/use-timer';
 import { TimerDisplay } from './timer-display';
 import { TimerControls } from './timer-controls';
@@ -18,7 +18,6 @@ import { addDoc, collection, serverTimestamp, query, where } from 'firebase/fire
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { StyleSelector } from './style-selector';
-import { Card, CardContent } from '@/components/ui/card';
 
 type TimerMode = 'pomodoro' | 'stopwatch';
 type LayoutMode = 'side' | 'bottom';
@@ -29,35 +28,45 @@ const modeSettings: { [key in TimerMode]: { defaultDuration: number; label: stri
 };
 
 export default function Timer() {
-  const { user, loading: userLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
   const [mode, setMode] = useState<TimerMode>('pomodoro');
   const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [customDuration, setCustomDuration] = useState(modeSettings.pomodoro.defaultDuration / 60);
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
   const { toast } = useToast();
 
-  const subjectsQuery = user ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
+  const subjectsQuery = useMemo(() => {
+      return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
+  }, [user, firestore]);
   const { data: subjects, loading: subjectsLoading } = useCollection<Subject>(subjectsQuery);
 
+  const selectedSubject = useMemo(() => {
+    if (!subjects || !selectedSubjectId) return null;
+    return subjects.find(s => s.id === selectedSubjectId) || null;
+  }, [subjects, selectedSubjectId]);
+
   const handleSessionEnd = async (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => {
-    if (!user || !selectedSubject || !sessionData.startTime || sessionData.duration < 5) return;
+    if (!user || !selectedSubjectId || !sessionData.startTime || sessionData.duration < 5) return;
     
+    // Calculate a simple focus score. 100 is perfect, reduced by pauses.
+    const focusScore = Math.max(0, 100 - (sessionData.pauseCount * 5));
+
     try {
       await addDoc(collection(firestore, 'sessions'), {
         userId: user.uid,
-        subjectId: selectedSubject.id,
+        subjectId: selectedSubjectId,
         mode: mode,
         startTime: new Date(sessionData.startTime).toISOString(),
         endTime: serverTimestamp(),
         duration: sessionData.duration,
         pauseCount: sessionData.pauseCount,
         status: 'completed',
-        focusScore: 100, // Placeholder
+        focusScore: focusScore,
       });
 
       toast({
@@ -97,7 +106,7 @@ export default function Timer() {
 
 
   const handleStart = () => {
-    if (user && !selectedSubject) {
+    if (user && !selectedSubjectId) {
       toast({
         title: 'No Subject Selected',
         description: 'Please select a subject before starting the timer to save your session.',
@@ -123,8 +132,7 @@ export default function Timer() {
   
   const handleSubjectChange = (subjectId: string) => {
     if (isActive) return;
-    const subject = subjects?.find(s => s.id === subjectId) || null;
-    setSelectedSubject(subject);
+    setSelectedSubjectId(subjectId);
   };
 
   const handleAddSubject = async (newSubject: Omit<Subject, 'id' | 'archived' | 'userId' | 'createdAt'>) => {
@@ -145,7 +153,7 @@ export default function Timer() {
             archived: false,
             createdAt: serverTimestamp()
         });
-        setSelectedSubject({ ...newSubject, id: docRef.id, archived: false, userId: user.uid, createdAt: new Date().toISOString() });
+        setSelectedSubjectId(docRef.id);
         setAddSubjectOpen(false);
     } catch (e) {
         console.error("Error adding document: ", e);
@@ -186,7 +194,7 @@ export default function Timer() {
             </div>
         )}
         <div className="flex gap-2 w-full max-w-sm">
-            <Select onValueChange={handleSubjectChange} disabled={isActive || !user} value={selectedSubject?.id || ""}>
+            <Select onValueChange={handleSubjectChange} disabled={isActive || !user} value={selectedSubjectId || ""}>
                 <SelectTrigger>
                 <SelectValue placeholder={user ? (subjectsLoading ? "Loading subjects..." : "Select a subject") : "Login to see subjects"} />
                 </SelectTrigger>

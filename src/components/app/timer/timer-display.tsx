@@ -1,5 +1,5 @@
+
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 
 interface TimerDisplayProps {
   time: number;
@@ -21,8 +21,8 @@ export function TimerDisplay({ time, subjectName }: TimerDisplayProps) {
             >
               {formatTime(time)}
             </span>
-            <span className="mt-4 text-lg font-medium text-muted-foreground truncate max-w-full px-4">
-              {subjectName}
+            <span className="mt-4 text-lg font-medium text-muted-foreground truncate max-w-full px-4 text-center">
+              {subjectName || "No Subject"}
             </span>
         </CardContent>
     </Card>

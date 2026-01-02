@@ -16,28 +16,29 @@ export function Overview({ sessions }: OverviewProps) {
         const date = startOfDay(subDays(new Date(), 6 - i));
         return {
             name: format(date, 'E'), // "Mon", "Tue", etc.
+            date,
             total: 0,
         };
     });
 
     if (sessions) {
         sessions.forEach(session => {
-            const sessionDateStr = format(startOfDay(new Date(session.startTime)), 'E');
-            const dayData = weeklyData.find(d => d.name === sessionDateStr);
+            const sessionDayStart = startOfDay(new Date(session.startTime));
+            const dayData = weeklyData.find(d => d.date.getTime() === sessionDayStart.getTime());
             if (dayData) {
                 dayData.total += session.duration; // duration in seconds
             }
         });
     }
     
-    return weeklyData;
+    return weeklyData.map(d => ({ name: d.name, total: d.total }));
   }, [sessions]);
 
 
   if (!sessions) {
       return (
         <div style={{ height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div>Loading chart...</div>
+            <div className="text-muted-foreground">Loading chart...</div>
         </div>
       )
   }
