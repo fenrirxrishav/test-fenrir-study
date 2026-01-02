@@ -3,34 +3,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Helper function to check if a user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Helper function to check if the request is coming from the owner of the document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
     match /users/{userId} {
-      // Only the authenticated owner of the document can read or write to it.
-      // A new user can create their own profile document.
+      // A user can read, update, or delete their own profile document.
       allow read, update, delete: if isSignedIn() && isOwner(userId);
+      // A user can create their own profile document if the UID in the document
+      // matches their authentication UID. This is crucial for first-time login.
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
     }
 
     match /subjects/{subjectId} {
-      // A user can read, create, update, or delete a subject if the document's
-      // userId matches their own auth uid.
+      // A user can read, create, update, or delete a subject if they are signed in
+      // and the document's userId matches their own auth uid.
       allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /sessions/{sessionId} {
-      // A user can read or create a session if the document's userId matches their uid.
-      allow read, create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // A user can read or create a session if they are signed in and the
+      // document's userId matches their own auth uid.
+      allow read, create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Sessions are immutable to maintain data integrity.
+      // Sessions are immutable to maintain data integrity for analytics.
       allow update, delete: if false;
     }
   }
