@@ -33,19 +33,16 @@ export function useUser() {
           const userSnap = await getDoc(userRef);
 
           if (!userSnap.exists()) {
-            const newUser: Omit<AppUser, 'id'> = {
-              name: authUser.displayName || 'Anonymous',
+            const userData: Omit<AppUser, 'createdAt'> & { createdAt: any; lastLogin: any } = {
+              uid: authUser.uid,
+              displayName: authUser.displayName || 'Anonymous',
               email: authUser.email || '',
-              avatarUrl: authUser.photoURL || '',
-            }
-            const userData = {
-                ...newUser,
-                uid: authUser.uid, // Security rule requires uid to match authUser.uid on create
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp(),
+              photoURL: authUser.photoURL || '',
+              createdAt: serverTimestamp(),
+              lastLogin: serverTimestamp(),
             };
             
-            setDoc(userRef, userData).catch((serverError) => {
+            await setDoc(userRef, userData).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'create',
@@ -56,7 +53,7 @@ export function useUser() {
 
           } else {
             const updateData = { lastLogin: serverTimestamp() };
-            setDoc(userRef, updateData, { merge: true }).catch((serverError) => {
+            await setDoc(userRef, updateData, { merge: true }).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'update',
@@ -66,8 +63,6 @@ export function useUser() {
             });
           }
         } catch (e) {
-            // This can happen if getDoc is denied by security rules.
-            // Though our rules allow reading own doc, it's good practice to handle.
             const permissionError = new FirestorePermissionError({
                 path: userRef.path,
                 operation: 'get',

@@ -31,8 +31,9 @@ export type Goal = {
 };
 
 export type User = {
-  id: string;
-  name: string;
+  uid: string;
+  displayName: string;
   email: string;
-  avatarUrl: string;
+  photoURL: string;
+  createdAt: string;
 };
