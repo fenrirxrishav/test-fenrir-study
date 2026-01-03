@@ -53,6 +53,34 @@ export function useTimer({
     }
   };
 
+  const reset = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    
+    const storedState = getStoredState();
+    if (storedState) {
+        let studiedDuration;
+        if(storedState.timerType === 'countdown'){
+            const elapsed = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
+            studiedDuration = Math.min(elapsed, storedState.initialDuration);
+        } else {
+             studiedDuration = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
+        }
+
+        if (studiedDuration > 5) {
+            onEnd({ 
+                duration: studiedDuration, 
+                pauseCount: storedState.pauseCount, 
+                startTime: storedState.startTime 
+            });
+        }
+    }
+    
+    setStoredState(null);
+    setIsActive(false);
+    setIsPaused(false);
+    setTime(initialDuration);
+  }, [timerId, onEnd, initialDuration]);
+
   const handleTick = useCallback(() => {
     const storedState = getStoredState();
     if (!storedState || storedState.isPaused) {
@@ -144,34 +172,6 @@ export function useTimer({
     });
     setIsPaused(true);
   }, [timerId, isActive]);
-
-  const reset = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    
-    const storedState = getStoredState();
-    if (storedState) {
-        let studiedDuration;
-        if(storedState.timerType === 'countdown'){
-            const elapsed = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
-            studiedDuration = Math.min(elapsed, storedState.initialDuration);
-        } else {
-             studiedDuration = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
-        }
-
-        if (studiedDuration > 5) {
-            onEnd({ 
-                duration: studiedDuration, 
-                pauseCount: storedState.pauseCount, 
-                startTime: storedState.startTime 
-            });
-        }
-    }
-    
-    setStoredState(null);
-    setIsActive(false);
-    setIsPaused(false);
-    setTime(initialDuration);
-  }, [timerId, onEnd, initialDuration]);
 
   return { time, isActive, isPaused, start, pause, reset };
 }
