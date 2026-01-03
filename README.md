@@ -1,4 +1,4 @@
-# fenrirstudy 🐺
+# fenrirstudy 🐺 xyz
 
 **Live Demo: [https://fenrirstudy.vercel.app/](https://fenrirstudy.vercel.app/)**
 

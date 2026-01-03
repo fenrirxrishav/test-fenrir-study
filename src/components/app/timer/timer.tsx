@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Palette, PanelLeft, PanelTop } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
-import { addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { StyleSelector } from './style-selector';
@@ -26,6 +26,8 @@ const modeSettings: { [key in TimerMode]: { defaultDuration: number; label: stri
   pomodoro: { defaultDuration: 25 * 60, label: 'Pomodoro' },
   stopwatch: { defaultDuration: 0, label: 'Stopwatch' },
 };
+
+const TIMER_ID = 'fenrir-study-timer';
 
 export default function Timer() {
   const { user } = useUser();
@@ -97,14 +99,30 @@ export default function Timer() {
   } = useTimer({ 
     initialDuration: timerDuration, 
     onEnd: handleSessionEnd, 
-    timerType: mode === 'stopwatch' ? 'stopwatch' : 'countdown' 
+    timerType: mode,
+    timerId: TIMER_ID
   });
   
+  // This effect synchronizes the component state with the hook's state,
+  // which might be restored from localStorage.
+  useEffect(() => {
+    try {
+        const stored = localStorage.getItem(TIMER_ID);
+        if (stored) {
+            const state = JSON.parse(stored);
+            if (state.timerType) setMode(state.timerType);
+            if (state.initialDuration > 0) setCustomDuration(state.initialDuration / 60);
+        }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!isActive) {
-        reset(timerDuration);
+      if (mode === 'pomodoro') {
+        reset();
+      }
     }
-  }, [customDuration, mode, isActive, reset, timerDuration]);
+  }, [customDuration, mode]);
 
 
   const handleStart = () => {

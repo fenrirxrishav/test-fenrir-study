@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -6,98 +7,192 @@ type UseTimerProps = {
   initialDuration: number;
   onEnd: (sessionData: { duration: number; pauseCount: number, startTime: number | null }) => void;
   timerType?: 'countdown' | 'stopwatch';
+  timerId: string; // Unique ID for localStorage
+};
+
+type StoredTimerState = {
+    startTime: number;
+    pauseCount: number;
+    initialDuration: number;
+    timerType: 'countdown' | 'stopwatch';
+    isPaused: boolean;
+    pauseTime?: number;
 };
 
 export function useTimer({
   initialDuration,
   onEnd,
   timerType = 'countdown',
+  timerId,
 }: UseTimerProps) {
-  const [duration, setDuration] = useState(initialDuration);
   const [time, setTime] = useState(initialDuration);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseCount, setPauseCount] = useState(0);
+  
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    // Reset timer state when the key properties change, but only if not active
-    if (!isActive) {
-        setTime(initialDuration);
-        setDuration(initialDuration);
+  const getStoredState = (): StoredTimerState | null => {
+    try {
+        const stored = localStorage.getItem(timerId);
+        if (!stored) return null;
+        const state = JSON.parse(stored) as StoredTimerState;
+        // Basic validation
+        if (state.startTime && state.initialDuration !== undefined && state.timerType) {
+            return state;
+        }
+        return null;
+    } catch {
+        return null;
     }
-  }, [initialDuration, timerType, isActive]);
-  
+  };
+
+  const setStoredState = (state: StoredTimerState | null) => {
+    if (!state) {
+        localStorage.removeItem(timerId);
+    } else {
+        localStorage.setItem(timerId, JSON.stringify(state));
+    }
+  };
+
   const handleTick = useCallback(() => {
-     if (timerType === 'countdown') {
-        setTime((prevTime) => {
-          if (prevTime <= 1) {
-            clearInterval(intervalRef.current!);
-            setIsActive(false);
-            onEnd({ duration: duration, pauseCount, startTime: startTimeRef.current });
-            return 0;
-          }
-          return prevTime - 1;
+    const storedState = getStoredState();
+    if (!storedState || storedState.isPaused) {
+      if(intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+
+    const elapsed = Math.floor((Date.now() - storedState.startTime) / 1000);
+
+    if (timerType === 'countdown') {
+      const newTime = storedState.initialDuration - elapsed;
+      setTime(newTime);
+
+      if (newTime <= 0) {
+        onEnd({ 
+            duration: storedState.initialDuration, 
+            pauseCount: storedState.pauseCount, 
+            startTime: startTimeRef.current 
         });
-      } else { // Stopwatch
-        setTime((prevTime) => prevTime + 1);
+        reset();
       }
-  }, [timerType, onEnd, duration, pauseCount]);
+    } else { // Stopwatch
+      setTime(elapsed);
+    }
+  }, [timerId, onEnd, timerType]);
+
+
+  useEffect(() => {
+    const storedState = getStoredState();
+    if (storedState) {
+        // Resume from stored state
+        startTimeRef.current = storedState.startTime;
+        setPauseCount(storedState.pauseCount);
+        setIsPaused(storedState.isPaused);
+        
+        let elapsed = 0;
+        if(storedState.isPaused && storedState.pauseTime) {
+             elapsed = Math.floor((storedState.pauseTime - storedState.startTime) / 1000);
+        } else {
+             elapsed = Math.floor((Date.now() - storedState.startTime) / 1000);
+        }
+
+        if(storedState.timerType === 'countdown'){
+            const remaining = storedState.initialDuration - elapsed;
+            setTime(remaining > 0 ? remaining : 0);
+        } else {
+            setTime(elapsed);
+        }
+        setIsActive(true);
+
+    } else {
+        setTime(initialDuration);
+    }
+  }, [timerId, initialDuration]);
 
   useEffect(() => {
     if (isActive && !isPaused) {
+      handleTick(); // Run once immediately
       intervalRef.current = setInterval(handleTick, 1000);
     } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isActive, isPaused, handleTick]);
-  
+
   const start = useCallback(() => {
+    const storedState = getStoredState();
+    let newStartTime;
+
+    if (storedState && storedState.isPaused) {
+        // Resuming from a paused state
+        const pauseDuration = Date.now() - (storedState.pauseTime || Date.now());
+        newStartTime = storedState.startTime + pauseDuration;
+    } else {
+        // Starting fresh
+        newStartTime = Date.now();
+        setPauseCount(0);
+    }
+
+    startTimeRef.current = newStartTime;
+    const newState: StoredTimerState = {
+        startTime: newStartTime,
+        pauseCount: storedState?.pauseCount || 0,
+        initialDuration: timerType === 'countdown' ? initialDuration : 0,
+        timerType: timerType,
+        isPaused: false,
+    };
+    setStoredState(newState);
+    
     setIsActive(true);
     setIsPaused(false);
-    if (!startTimeRef.current) {
-        startTimeRef.current = Date.now();
-    }
-  }, []);
+  }, [timerId, initialDuration, timerType, getStoredState, setStoredState]);
 
   const pause = useCallback(() => {
-    setIsPaused(true);
-    if(isActive) {
-        setPauseCount((p) => p + 1);
-    }
-  }, [isActive]);
+    const storedState = getStoredState();
+    if (!storedState || !isActive) return;
 
-  const reset = useCallback((newDuration?: number) => {
+    const newPauseCount = (storedState.pauseCount || 0) + 1;
+    setStoredState({
+        ...storedState,
+        isPaused: true,
+        pauseTime: Date.now(),
+        pauseCount: newPauseCount,
+    });
+    setPauseCount(newPauseCount);
+    setIsPaused(true);
+  }, [timerId, isActive, getStoredState, setStoredState]);
+
+  const reset = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     
-    // Only trigger onEnd if the timer was actually running and some time has passed
-    if (isActive) {
-        const studiedDuration = timerType === 'countdown' ? duration - time : time;
-        // Only save if more than a few seconds have passed to avoid saving empty sessions
+    const storedState = getStoredState();
+
+    if (storedState) {
+        const studiedDuration = timerType === 'countdown' 
+            ? initialDuration - time 
+            : time;
+
         if (studiedDuration > 5) {
-            onEnd({ duration: studiedDuration, pauseCount, startTime: startTimeRef.current });
+            onEnd({ 
+                duration: studiedDuration, 
+                pauseCount: storedState.pauseCount, 
+                startTime: storedState.startTime 
+            });
         }
     }
-
-    const finalDuration = newDuration !== undefined ? newDuration : initialDuration;
-
+    
+    setStoredState(null);
+    startTimeRef.current = null;
     setIsActive(false);
     setIsPaused(false);
     setPauseCount(0);
-    setTime(finalDuration);
-    if(timerType === 'countdown') {
-        setDuration(finalDuration);
-    }
-    startTimeRef.current = null;
-  }, [duration, time, isActive, pauseCount, onEnd, timerType, initialDuration]);
+    setTime(initialDuration);
+  }, [timerId, onEnd, time, initialDuration, timerType, setStoredState]);
 
-  return { time, isActive, isPaused, start, pause, reset, duration };
+  return { time, isActive, isPaused, start, pause, reset };
 }
