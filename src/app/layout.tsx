@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
 import BottomNav from '@/components/app/bottom-nav';
 import { AppHeader } from '@/components/app/header';
-import { FirebaseProvider } from '@/firebase';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseProvider>
+          <FirebaseClientProvider>
             <div className="relative flex h-full flex-col">
               <AppHeader />
               <main className="flex-1 overflow-y-auto pb-28">
@@ -44,7 +44,7 @@ export default function RootLayout({
               <BottomNav />
             </div>
             <Toaster />
-          </FirebaseProvider>
+          </FirebaseClientProvider>
         </ThemeProvider>
       </body>
     </html>

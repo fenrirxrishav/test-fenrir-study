@@ -16,7 +16,7 @@ type StoredTimerState = {
     initialDuration: number;
     timerType: 'countdown' | 'stopwatch';
     isPaused: boolean;
-    pauseTime?: number;
+    pauseTime: number | null; // The timestamp when pause was clicked
 };
 
 export function useTimer({
@@ -28,18 +28,15 @@ export function useTimer({
   const [time, setTime] = useState(initialDuration);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [pauseCount, setPauseCount] = useState(0);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number | null>(null);
 
   const getStoredState = (): StoredTimerState | null => {
     try {
         const stored = localStorage.getItem(timerId);
         if (!stored) return null;
         const state = JSON.parse(stored) as StoredTimerState;
-        // Basic validation
-        if (state.startTime && state.initialDuration !== undefined && state.timerType) {
+        if (state.startTime && state.timerType) {
             return state;
         }
         return null;
@@ -65,117 +62,101 @@ export function useTimer({
 
     const elapsed = Math.floor((Date.now() - storedState.startTime) / 1000);
 
-    if (timerType === 'countdown') {
+    if (storedState.timerType === 'countdown') {
       const newTime = storedState.initialDuration - elapsed;
       setTime(newTime);
-
       if (newTime <= 0) {
         onEnd({ 
             duration: storedState.initialDuration, 
             pauseCount: storedState.pauseCount, 
-            startTime: startTimeRef.current 
+            startTime: storedState.startTime
         });
         reset();
       }
     } else { // Stopwatch
       setTime(elapsed);
     }
-  }, [timerId, onEnd, timerType]);
+  }, [timerId, onEnd, reset]);
 
 
   useEffect(() => {
     const storedState = getStoredState();
     if (storedState) {
-        // Resume from stored state
-        startTimeRef.current = storedState.startTime;
-        setPauseCount(storedState.pauseCount);
-        setIsPaused(storedState.isPaused);
-        
-        let elapsed = 0;
-        if(storedState.isPaused && storedState.pauseTime) {
-             elapsed = Math.floor((storedState.pauseTime - storedState.startTime) / 1000);
-        } else {
-             elapsed = Math.floor((Date.now() - storedState.startTime) / 1000);
-        }
-
-        if(storedState.timerType === 'countdown'){
-            const remaining = storedState.initialDuration - elapsed;
-            setTime(remaining > 0 ? remaining : 0);
-        } else {
-            setTime(elapsed);
-        }
         setIsActive(true);
-
+        setIsPaused(storedState.isPaused);
+        handleTick(); // Calculate current time immediately on load
+        if (!storedState.isPaused) {
+            intervalRef.current = setInterval(handleTick, 1000);
+        }
     } else {
         setTime(initialDuration);
+        setIsActive(false);
+        setIsPaused(false);
     }
-  }, [timerId, initialDuration]);
-
-  useEffect(() => {
-    if (isActive && !isPaused) {
-      handleTick(); // Run once immediately
-      intervalRef.current = setInterval(handleTick, 1000);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-
-    return () => {
+     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isActive, isPaused, handleTick]);
+  }, [timerId, initialDuration, handleTick]);
+
 
   const start = useCallback(() => {
+    let stateToStore: StoredTimerState;
     const storedState = getStoredState();
-    let newStartTime;
 
     if (storedState && storedState.isPaused) {
         // Resuming from a paused state
         const pauseDuration = Date.now() - (storedState.pauseTime || Date.now());
-        newStartTime = storedState.startTime + pauseDuration;
+        stateToStore = {
+          ...storedState,
+          startTime: storedState.startTime + pauseDuration,
+          isPaused: false,
+          pauseTime: null,
+        };
     } else {
         // Starting fresh
-        newStartTime = Date.now();
-        setPauseCount(0);
+        stateToStore = {
+            startTime: Date.now(),
+            pauseCount: 0,
+            initialDuration: timerType === 'countdown' ? initialDuration : 0,
+            timerType: timerType,
+            isPaused: false,
+            pauseTime: null,
+        };
     }
-
-    startTimeRef.current = newStartTime;
-    const newState: StoredTimerState = {
-        startTime: newStartTime,
-        pauseCount: storedState?.pauseCount || 0,
-        initialDuration: timerType === 'countdown' ? initialDuration : 0,
-        timerType: timerType,
-        isPaused: false,
-    };
-    setStoredState(newState);
     
+    setStoredState(stateToStore);
     setIsActive(true);
     setIsPaused(false);
-  }, [timerId, initialDuration, timerType, getStoredState, setStoredState]);
+    handleTick(); // Immediate tick
+    intervalRef.current = setInterval(handleTick, 1000);
+  }, [timerId, initialDuration, timerType, handleTick]);
 
   const pause = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     const storedState = getStoredState();
     if (!storedState || !isActive) return;
 
-    const newPauseCount = (storedState.pauseCount || 0) + 1;
     setStoredState({
         ...storedState,
         isPaused: true,
         pauseTime: Date.now(),
-        pauseCount: newPauseCount,
+        pauseCount: storedState.pauseCount + 1,
     });
-    setPauseCount(newPauseCount);
     setIsPaused(true);
-  }, [timerId, isActive, getStoredState, setStoredState]);
+  }, [timerId, isActive]);
 
   const reset = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     
     const storedState = getStoredState();
-
     if (storedState) {
-        const studiedDuration = timerType === 'countdown' 
-            ? initialDuration - time 
-            : time;
+        let studiedDuration;
+        if(storedState.timerType === 'countdown'){
+            const elapsed = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
+            studiedDuration = Math.min(elapsed, storedState.initialDuration);
+        } else {
+             studiedDuration = Math.floor(((storedState.pauseTime || Date.now()) - storedState.startTime) / 1000);
+        }
 
         if (studiedDuration > 5) {
             onEnd({ 
@@ -187,12 +168,10 @@ export function useTimer({
     }
     
     setStoredState(null);
-    startTimeRef.current = null;
     setIsActive(false);
     setIsPaused(false);
-    setPauseCount(0);
     setTime(initialDuration);
-  }, [timerId, onEnd, time, initialDuration, timerType, setStoredState]);
+  }, [timerId, onEnd, initialDuration]);
 
   return { time, isActive, isPaused, start, pause, reset };
 }
