@@ -11,17 +11,18 @@ type UseTimerProps = {
 };
 
 type StoredTimerState = {
-    startTime: number; // The absolute timestamp when the timer started (or was last un-paused)
+    // The absolute timestamp when the timer *truly* began. This is not adjusted for pauses.
+    sessionStartTime: number; 
+    // The absolute timestamp when the timer was last (re)started. This is adjusted for pauses.
+    activeStartTime: number; 
     pauseCount: number;
     initialDuration: number;
     timerType: 'countdown' | 'stopwatch';
     isPaused: boolean;
-    // When paused, this stores the time already elapsed. When un-pausing, this value is subtracted
-    // from the new start time to get the correct total elapsed duration.
-    accumulatedPauseTime: number; 
-    // The absolute timestamp when the timer was last paused. Used to calculate accumulated pause time.
-    pauseTime: number | null; 
+    // When paused, this stores the time already elapsed *before* this pause started.
+    accumulatedElapsed: number; 
 };
+
 
 // Helper functions to interact with localStorage
 const getStoredState = (timerId: string): StoredTimerState | null => {
@@ -63,7 +64,6 @@ export function useTimer({
     onEndRef.current = onEnd;
   }, [onEnd]);
 
-  // The main tick function - this is the heart of the timer
   const handleTick = useCallback(() => {
     const storedState = getStoredState(timerId);
     if (!storedState || storedState.isPaused) {
@@ -71,27 +71,27 @@ export function useTimer({
       return;
     }
 
-    const elapsed = Math.floor((Date.now() - storedState.startTime) / 1000);
+    const elapsedSinceActiveStart = Math.floor((Date.now() - storedState.activeStartTime) / 1000);
+    const totalElapsed = storedState.accumulatedElapsed + elapsedSinceActiveStart;
 
     if (storedState.timerType === 'countdown') {
-      const newTime = storedState.initialDuration - elapsed;
-      setTime(newTime);
+      const newTime = storedState.initialDuration - totalElapsed;
+      setTime(newTime > 0 ? newTime : 0);
+      
       if (newTime <= 0) {
-        // Timer ended, call onEnd and reset
-        const studiedDuration = storedState.initialDuration;
         onEndRef.current({ 
-            duration: studiedDuration, 
+            duration: storedState.initialDuration, 
             pauseCount: storedState.pauseCount, 
-            startTime: storedState.startTime - storedState.accumulatedPauseTime
+            startTime: storedState.sessionStartTime
         });
         setStoredState(timerId, null);
-        setTime(initialDuration); // Reset display time
+        setTime(initialDuration);
         setIsActive(false);
         setIsPaused(false);
         if (intervalRef.current) clearInterval(intervalRef.current);
       }
     } else { // Stopwatch
-      setTime(elapsed);
+      setTime(totalElapsed);
     }
   }, [timerId, initialDuration]);
 
@@ -103,14 +103,15 @@ export function useTimer({
         setIsPaused(storedState.isPaused);
         
         if (storedState.isPaused) {
-             const elapsedOnPause = Math.floor(((storedState.pauseTime || storedState.startTime) - storedState.startTime) / 1000);
-             if (storedState.timerType === 'countdown') {
+            const elapsedOnPause = storedState.accumulatedElapsed;
+            if (storedState.timerType === 'countdown') {
                  setTime(storedState.initialDuration - elapsedOnPause);
-             } else {
+            } else {
                  setTime(elapsedOnPause);
-             }
+            }
         } else {
              handleTick(); // Calculate current time immediately
+             if (intervalRef.current) clearInterval(intervalRef.current);
              intervalRef.current = setInterval(handleTick, 1000);
         }
     } else {
@@ -118,82 +119,88 @@ export function useTimer({
         setIsActive(false);
         setIsPaused(false);
     }
+
+    // This cleanup is crucial for SPA navigation
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [timerId, initialDuration, handleTick]);
 
 
   const start = useCallback(() => {
-    let stateToStore: StoredTimerState;
     const storedState = getStoredState(timerId);
     const now = Date.now();
 
     if (storedState && storedState.isPaused) {
         // Resuming from a paused state
-        const pauseDuration = now - (storedState.pauseTime || now);
-        stateToStore = {
+        const newState = {
           ...storedState,
-          startTime: storedState.startTime + pauseDuration, // Adjust start time to account for pause
           isPaused: false,
-          pauseTime: null,
+          activeStartTime: now, // Start a new "active" period
         };
+        setStoredState(timerId, newState);
     } else {
         // Starting fresh
-        stateToStore = {
-            startTime: now,
+        const newState: StoredTimerState = {
+            sessionStartTime: now,
+            activeStartTime: now,
             pauseCount: 0,
             initialDuration: timerType === 'countdown' ? initialDuration : 0,
             timerType: timerType,
             isPaused: false,
-            accumulatedPauseTime: 0,
-            pauseTime: null,
+            accumulatedElapsed: 0,
         };
+        setStoredState(timerId, newState);
     }
     
-    setStoredState(timerId, stateToStore);
     setIsActive(true);
     setIsPaused(false);
-    handleTick(); // Immediate tick to update UI
+    handleTick();
+    if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(handleTick, 1000);
   }, [timerId, initialDuration, timerType, handleTick]);
 
   const pause = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     const storedState = getStoredState(timerId);
-    if (!storedState || !isActive) return;
+    if (!storedState || !isActive || storedState.isPaused) return;
+
+    const elapsedSinceActiveStart = Math.floor((Date.now() - storedState.activeStartTime) / 1000);
 
     setStoredState(timerId, {
         ...storedState,
         isPaused: true,
-        pauseTime: Date.now(),
         pauseCount: storedState.pauseCount + 1,
+        accumulatedElapsed: storedState.accumulatedElapsed + elapsedSinceActiveStart,
     });
     setIsPaused(true);
-    // UI time is already updated by handleTick clearing, no need to setTime here
-  }, [timerId, isActive]);
+    handleTick(); // one last tick to update the display to the exact pause time
+  }, [timerId, isActive, handleTick]);
 
   const reset = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     
     const storedState = getStoredState(timerId);
     if (storedState) {
-        const endTime = storedState.isPaused ? storedState.pauseTime : Date.now();
-        const elapsed = Math.floor(((endTime || Date.now()) - storedState.startTime) / 1000);
-        
-        let studiedDuration;
-        if(storedState.timerType === 'countdown'){
-            studiedDuration = Math.min(elapsed, storedState.initialDuration);
-        } else {
-             studiedDuration = elapsed;
+        // Calculate final duration based on state before reset
+        let finalElapsed = storedState.accumulatedElapsed;
+        if (!storedState.isPaused) {
+            const elapsedSinceActiveStart = Math.floor((Date.now() - storedState.activeStartTime) / 1000);
+            finalElapsed += elapsedSinceActiveStart;
         }
 
-        // Only save session if it's longer than a few seconds
+        const studiedDuration = (storedState.timerType === 'countdown')
+            ? Math.min(finalElapsed, storedState.initialDuration)
+            : finalElapsed;
+
         if (studiedDuration > 5) {
             onEndRef.current({ 
                 duration: studiedDuration, 
                 pauseCount: storedState.pauseCount, 
-                startTime: storedState.startTime - storedState.accumulatedPauseTime,
+                startTime: storedState.sessionStartTime,
             });
         }
     }
