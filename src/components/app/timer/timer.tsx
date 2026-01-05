@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Palette, PanelLeft, PanelTop, Check } from 'lucide-react';
+import { PlusCircle, Palette, PanelLeft, PanelTop } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { addDoc, collection, query, serverTimestamp, where } from 'firebase/firestore';
@@ -45,7 +45,7 @@ export default function Timer() {
   const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
-  const [activeFace, setActiveFace] = useState<TimerFaceId>('ring');
+  const [activeFace, setActiveFace] = useState<TimerFaceId>('analog');
   
   const subjectsQuery = useMemo(() => {
       return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -108,11 +108,16 @@ export default function Timer() {
 
   const layoutIcon = layout === 'side' ? <PanelTop /> : <PanelLeft />;
 
-  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || DigitalFace;
+  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || AnalogFace;
 
   const controlPanel = (
-    <div className="flex w-full flex-col items-center justify-center gap-6">
-        <Tabs value={mode} onValueChange={(val) => handleModeChange(val as 'pomodoro' | 'stopwatch')} className="w-full max-w-sm">
+    <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.4 }}
+        className="flex w-full flex-col items-center justify-center gap-6"
+    >
+        <Tabs value={mode} onValueChange={(val) => handleModeChange(val as 'pomodoro' | 'stopwatch')} className="w-full max-w-xs">
             <TabsList className={cn("grid w-full grid-cols-2", !isIdle && "pointer-events-none opacity-50")}>
             {Object.entries(modeSettings).map(([key, value]) => (
                 <TabsTrigger key={key} value={key} disabled={!isIdle}>
@@ -136,9 +141,9 @@ export default function Timer() {
                 <span className="text-sm text-muted-foreground">min</span>
             </div>
         )}
-        <div className="flex gap-2 w-full max-w-sm">
+        <div className="flex gap-2 w-full max-w-xs">
             <Select onValueChange={handleSubjectChange} disabled={!isIdle || !user} value={selectedSubjectId || ""}>
-                <SelectTrigger>
+                <SelectTrigger className="shadow-sm">
                 <SelectValue placeholder={user ? (subjectsLoading ? "Loading subjects..." : "Select a subject") : "Login to see subjects"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -152,7 +157,7 @@ export default function Timer() {
                 ))}
                 </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" onClick={() => setAddSubjectOpen(true)} disabled={!isIdle}>
+            <Button variant="outline" size="icon" onClick={() => setAddSubjectOpen(true)} disabled={!isIdle} className="shadow-sm">
                 <PlusCircle className="h-4 w-4" />
             </Button>
         </div>
@@ -164,17 +169,17 @@ export default function Timer() {
         onPause={pause}
         onReset={() => stop('stopped')}
         />
-    </div>
+    </motion.div>
   );
 
 
   return (
     <>
-        <div className={cn("relative flex h-full w-full flex-col items-center justify-center gap-8 md:gap-12 p-4", {
+        <div className={cn("relative flex h-full w-full flex-col items-center justify-center gap-8 md:gap-12 p-4 pt-20", {
             "md:flex-row": layout === 'side',
             "md:flex-col": layout === 'bottom'
         })}>
-            <div className="absolute top-4 right-4 flex items-center">
+            <div className="absolute top-4 right-4 flex items-center z-10">
                 <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)} className="hidden md:inline-flex">
                     <Palette />
                 </Button>
@@ -183,14 +188,14 @@ export default function Timer() {
                 </Button>
             </div>
         
-            <div className="w-full max-w-md aspect-square flex items-center justify-center">
+            <div className="w-full max-w-sm aspect-square flex items-center justify-center">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeFace}
-                        initial={{ opacity: 0, scale: 0.98 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                         className="w-full h-full"
                     >
                         <ActiveFaceComponent 
@@ -217,7 +222,7 @@ export default function Timer() {
         />
         <StyleSelector
             isOpen={isStyleSelectorOpen}
-            onOpencha-nge={setStyleSelectorOpen}
+            onOpenChange={setStyleSelectorOpen}
             activeFace={activeFace}
             onFaceChange={setActiveFace}
         />
