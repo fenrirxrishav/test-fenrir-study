@@ -3,13 +3,11 @@
 
 import { useState, useMemo } from 'react';
 import { useTimer } from '@/hooks/use-timer';
-import { TimerDisplay } from './timer-display';
-import { TimerControls } from './timer-controls';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Palette, PanelLeft, PanelTop } from 'lucide-react';
+import { PlusCircle, Palette, PanelLeft, PanelTop, Check } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { addDoc, collection, query, serverTimestamp, where } from 'firebase/firestore';
@@ -18,14 +16,25 @@ import { StyleSelector } from './style-selector';
 import type { Subject } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-
+import { DigitalFace } from './faces/digital-face';
+import { RingFace } from './faces/ring-face';
+import { AnalogFace } from './faces/analog-face';
+import { AnimatePresence, motion } from 'framer-motion';
+import { TimerControls } from './timer-controls';
 
 type LayoutMode = 'side' | 'bottom';
+export type TimerFaceId = 'digital' | 'ring' | 'analog';
 
 const modeSettings: { [key in 'pomodoro' | 'stopwatch']: { label: string } } = {
   pomodoro: { label: 'Pomodoro' },
   stopwatch: { label: 'Stopwatch' },
 };
+
+const faces: { id: TimerFaceId, component: React.FC<any> }[] = [
+    { id: 'digital', component: DigitalFace },
+    { id: 'ring', component: RingFace },
+    { id: 'analog', component: AnalogFace },
+]
 
 export default function Timer() {
   const { user } = useUser();
@@ -36,6 +45,7 @@ export default function Timer() {
   const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
+  const [activeFace, setActiveFace] = useState<TimerFaceId>('digital');
   
   const subjectsQuery = useMemo(() => {
       return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -51,6 +61,7 @@ export default function Timer() {
     isPaused,
     isIdle,
     timerStateLoading,
+    totalDuration,
     start,
     pause,
     stop,
@@ -96,6 +107,8 @@ export default function Timer() {
   };
 
   const layoutIcon = layout === 'side' ? <PanelTop /> : <PanelLeft />;
+
+  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || DigitalFace;
 
   const controlPanel = (
     <div className="flex w-full flex-col items-center justify-center gap-6">
@@ -170,7 +183,26 @@ export default function Timer() {
                 </Button>
             </div>
         
-            <TimerDisplay time={displayTime} subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')} />
+            <div className="w-full max-w-md aspect-square flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeFace}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full"
+                    >
+                        <ActiveFaceComponent 
+                            time={displayTime} 
+                            subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')}
+                            mode={mode}
+                            totalDuration={totalDuration}
+                            isActive={isActive}
+                        />
+                    </motion.div>
+                </AnimatePresence>
+            </div>
             
             <div className={cn("flex w-full items-center justify-center md:w-auto", {
                 "md:max-w-sm": layout === 'side'
@@ -186,6 +218,8 @@ export default function Timer() {
         <StyleSelector
             isOpen={isStyleSelectorOpen}
             onOpenChange={setStyleSelectorOpen}
+            activeFace={activeFace}
+            onFaceChange={setActiveFace}
         />
     </>
   );
