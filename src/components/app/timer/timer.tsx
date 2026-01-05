@@ -45,7 +45,7 @@ export default function Timer() {
   const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
-  const [activeFace, setActiveFace] = useState<TimerFaceId>('digital');
+  const [activeFace, setActiveFace] = useState<TimerFaceId>('ring');
   
   const subjectsQuery = useMemo(() => {
       return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -217,7 +217,7 @@ export default function Timer() {
         />
         <StyleSelector
             isOpen={isStyleSelectorOpen}
-            onOpenChange={setStyleSelectorOpen}
+            onOpencha-nge={setStyleSelectorOpen}
             activeFace={activeFace}
             onFaceChange={setActiveFace}
         />

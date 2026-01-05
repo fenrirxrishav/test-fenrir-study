@@ -1,8 +1,6 @@
 
 'use client';
 
-import { Card, CardContent } from "@/components/ui/card";
-
 interface DigitalFaceProps {
   time: number;
   subjectName?: string;
