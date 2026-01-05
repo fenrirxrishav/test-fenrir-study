@@ -30,7 +30,6 @@ const themes = [
 const faces: {id: TimerFaceId, name: string, icon: React.ReactNode}[] = [
     { id: 'digital', name: 'Digital', icon: <Clock /> },
     { id: 'ring', name: 'Progress Ring', icon: <Donut /> },
-    { id: 'analog', name: 'Analog', icon: <CircleDot /> },
 ]
 
 export function StyleSelector({ isOpen, onOpenChange, activeFace, onFaceChange }: StyleSelectorProps) {

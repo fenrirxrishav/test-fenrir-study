@@ -18,12 +18,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { DigitalFace } from './faces/digital-face';
 import { RingFace } from './faces/ring-face';
-import { AnalogFace } from './faces/analog-face';
 import { AnimatePresence, motion } from 'framer-motion';
 import { TimerControls } from './timer-controls';
 
 type LayoutMode = 'side' | 'bottom';
-export type TimerFaceId = 'digital' | 'ring' | 'analog';
+export type TimerFaceId = 'digital' | 'ring';
 
 const modeSettings: { [key in 'pomodoro' | 'stopwatch']: { label: string } } = {
   pomodoro: { label: 'Pomodoro' },
@@ -33,7 +32,6 @@ const modeSettings: { [key in 'pomodoro' | 'stopwatch']: { label: string } } = {
 const faces: { id: TimerFaceId, component: React.FC<any> }[] = [
     { id: 'digital', component: DigitalFace },
     { id: 'ring', component: RingFace },
-    { id: 'analog', component: AnalogFace },
 ]
 
 export default function Timer() {
@@ -45,7 +43,7 @@ export default function Timer() {
   const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
   const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
-  const [activeFace, setActiveFace] = useState<TimerFaceId>('analog');
+  const [activeFace, setActiveFace] = useState<TimerFaceId>('ring');
   
   const subjectsQuery = useMemo(() => {
       return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -108,7 +106,7 @@ export default function Timer() {
 
   const layoutIcon = layout === 'side' ? <PanelTop /> : <PanelLeft />;
 
-  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || AnalogFace;
+  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || RingFace;
 
   const controlPanel = (
     <motion.div 
@@ -229,4 +227,3 @@ export default function Timer() {
     </>
   );
 }
-
