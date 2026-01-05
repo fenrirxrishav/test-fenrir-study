@@ -39,10 +39,12 @@ service cloud.firestore {
     }
 
     match /timerStates/{userId} {
-      // A user can only read and write their own timer state.
-      allow read, write: if isSignedIn() && isOwner(userId);
+      // A user can read their own timer state.
+      allow read: if isSignedIn() && isOwner(userId);
+      // A user can create their own timer state document.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      // A user can update their own timer state document, but cannot change the userId.
+      allow update: if isSignedIn() && isOwner(userId) && request.resource.data.userId == resource.data.userId;
     }
   }
 }
-
-    
