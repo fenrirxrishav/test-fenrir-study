@@ -1,4 +1,5 @@
 
+
 export type Subject = {
   id: string;
   userId: string;
@@ -37,3 +38,21 @@ export type User = {
   photoURL: string;
   createdAt: string;
 };
+
+// Represents the state of a user's timer, stored in Firestore
+export type TimerState = {
+  userId: string;
+  status: 'running' | 'paused' | 'stopped';
+  mode: 'pomodoro' | 'stopwatch';
+  subjectId: string;
+  // The server timestamp when the timer was last started/resumed
+  startedAt: { seconds: number, nanoseconds: number } | null;
+  // The server timestamp of the absolute beginning of the session
+  sessionStartTime: { seconds: number, nanoseconds: number };
+  // Duration in seconds for pomodoro mode
+  initialDuration: number;
+  // Total time in milliseconds the timer has run before the current 'running' phase
+  accumulatedTime: number; 
+}
+
+    

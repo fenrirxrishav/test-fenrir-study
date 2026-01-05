@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -43,6 +44,22 @@
         "focusScore": { "type": "number", "description": "A score representing focus during the session." }
       },
       "required": ["userId", "subjectId", "mode", "startTime", "duration", "status"]
+    },
+    "TimerState": {
+      "title": "TimerState",
+      "description": "Stores the live state of a user's timer.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "status": { "type": "string", "enum": ["running", "paused", "stopped"] },
+        "mode": { "type": "string", "enum": ["pomodoro", "stopwatch"] },
+        "subjectId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "sessionStartTime": { "type": "string", "format": "date-time" },
+        "initialDuration": { "type": "number" },
+        "accumulatedTime": { "type": "number" }
+      },
+      "required": ["userId", "status", "mode", "subjectId", "sessionStartTime", "initialDuration", "accumulatedTime"]
     }
   },
   "auth": {
@@ -60,6 +77,12 @@
     "/sessions/{sessionId}": {
       "schema": { "$ref": "#/entities/Session" },
       "description": "Stores individual study session records for all users."
+    },
+    "/timerStates/{userId}": {
+        "schema": { "$ref": "#/entities/TimerState" },
+        "description": "Stores the live timer state for each user."
     }
   }
 }
+
+    

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -36,5 +37,12 @@ service cloud.firestore {
       // Sessions are immutable to maintain data integrity for analytics.
       allow update, delete: if false;
     }
+
+    match /timerStates/{userId} {
+      // A user can only read and write their own timer state.
+      allow read, write: if isSignedIn() && isOwner(userId);
+    }
   }
 }
+
+    
