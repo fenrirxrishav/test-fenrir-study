@@ -38,10 +38,10 @@ export default function RootLayout({
           <FirebaseClientProvider>
             <div className="relative flex h-full w-full flex-col">
               <AppHeader />
-              <main className="flex-1 overflow-y-auto pb-20">
+              <main className="flex-1 overflow-y-auto pb-24">
                 {children}
               </main>
-              <footer className="fixed bottom-0 inset-x-0 z-50 h-20 border-t bg-background/95 backdrop-blur-sm md:hidden">
+              <footer className="fixed bottom-0 inset-x-0 z-50 h-20 flex items-center justify-center">
                 <BottomNav />
               </footer>
             </div>
