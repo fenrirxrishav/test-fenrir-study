@@ -42,7 +42,7 @@ export function useUser() {
               lastLogin: serverTimestamp(),
             };
             
-            await setDoc(userRef, userData).catch((serverError) => {
+            setDoc(userRef, userData).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'create',
@@ -53,7 +53,7 @@ export function useUser() {
 
           } else {
             const updateData = { lastLogin: serverTimestamp() };
-            await setDoc(userRef, updateData, { merge: true }).catch((serverError) => {
+            setDoc(userRef, updateData, { merge: true }).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'update',

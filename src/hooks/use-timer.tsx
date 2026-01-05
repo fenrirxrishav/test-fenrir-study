@@ -2,12 +2,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, serverTimestamp, updateDoc, setDoc, addDoc, collection, query, where } from 'firebase/firestore';
-import { TimerState, Subject, Session } from '@/lib/definitions';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc, serverTimestamp, updateDoc, setDoc, addDoc, collection } from 'firebase/firestore';
+import { TimerState, Session } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function useTimer() {
   const { user } = useUser();
@@ -15,11 +17,9 @@ export function useTimer() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // The local time state is just for display, derived from Firestore
   const [displayTime, setDisplayTime] = useState(0); 
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const toastRef = useRef(toast); // Stable ref for toast
   
   const timerStateRef = useMemo(() => {
     if (!user || !firestore) return null;
@@ -32,7 +32,6 @@ export function useTimer() {
   const [mode, setMode] = useState<'pomodoro' | 'stopwatch'>('pomodoro');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
-  // Sync local state with Firestore state when it loads or changes
   useEffect(() => {
     if (timerState) {
         setMode(timerState.mode);
@@ -41,7 +40,6 @@ export function useTimer() {
             setCustomDuration(timerState.initialDuration / 60);
         }
     } else {
-        // If no timer state, default to pomodoro
         setMode('pomodoro');
         setCustomDuration(25);
     }
@@ -54,7 +52,7 @@ export function useTimer() {
     }
     
     if (timerState.status === 'stopped') {
-        setDisplayTime(mode === 'pomodoro' ? customDuration * 60 : 0);
+        setDisplayTime(mode === 'pomodoro' ? timerState.initialDuration : 0);
         return;
     }
 
@@ -65,7 +63,6 @@ export function useTimer() {
     }
 
     if (timerState.status === 'running' && timerState.startedAt) {
-      // Firebase timestamps can be null briefly before server sets them
       if (timerState.startedAt?.seconds) {
         const now = Date.now();
         const startedAtMillis = timerState.startedAt.seconds * 1000 + (timerState.startedAt.nanoseconds / 1000000);
@@ -79,7 +76,7 @@ export function useTimer() {
             if (remaining <= 0) {
               stop('completed');
             }
-        } else { // Stopwatch
+        } else {
             setDisplayTime(totalElapsedTime / 1000);
         }
       }
@@ -87,16 +84,15 @@ export function useTimer() {
   }, [timerState, mode, customDuration]);
 
 
-  // Effect to manage the interval for UI updates
   useEffect(() => {
     if (intervalRef.current) {
         clearInterval(intervalRef.current);
     }
     if (timerState?.status === 'running') {
-        calculateDisplayTime(); // Recalculate immediately
+        calculateDisplayTime(); 
         intervalRef.current = setInterval(calculateDisplayTime, 1000);
     } else {
-        calculateDisplayTime(); // Update display for paused/stopped state
+        calculateDisplayTime();
     }
     return () => {
       if (intervalRef.current) {
@@ -106,8 +102,8 @@ export function useTimer() {
   }, [timerState, calculateDisplayTime]);
 
   const start = async () => {
-    if (!firestore || !user) {
-        toastRef.current({
+    if (!firestore || !user || !timerStateRef) {
+        toast({
             title: "You're not logged in",
             description: 'Log in to start the timer and track your progress.',
             action: <Button onClick={() => router.push('/login')}>Login</Button>
@@ -115,7 +111,7 @@ export function useTimer() {
         return;
     }
     if (!selectedSubjectId) {
-      toastRef.current({
+      toast({
         title: 'No Subject Selected',
         description: 'Please select a subject before starting the timer.',
         variant: 'destructive',
@@ -130,12 +126,12 @@ export function useTimer() {
 
     if(timerState && timerState.status === 'paused') {
         accumulatedTime = timerState.accumulatedTime;
-        newMode = timerState.mode; // Resume with the mode that was paused
+        newMode = timerState.mode;
         newDuration = timerState.initialDuration;
-        sessionStartTime = timerState.sessionStartTime; // Persist original start time
+        sessionStartTime = timerState.sessionStartTime;
     }
     
-    await setDoc(timerStateRef, {
+    const newState = {
       userId: user.uid,
       status: 'running',
       mode: newMode,
@@ -144,26 +140,44 @@ export function useTimer() {
       startedAt: serverTimestamp(),
       sessionStartTime: sessionStartTime,
       subjectId: selectedSubjectId,
-    }, { merge: true });
+    };
+
+    setDoc(timerStateRef, newState, { merge: true }).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: timerStateRef.path,
+            operation: 'update',
+            requestResourceData: newState,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   const pause = async () => {
-    if (!timerState || timerState.status !== 'running' || !timerState.startedAt?.seconds || !firestore) return;
+    if (!timerState || timerState.status !== 'running' || !timerState.startedAt?.seconds || !firestore || !timerStateRef) return;
 
     const now = Date.now();
     const startedAtMillis = timerState.startedAt.seconds * 1000 + (timerState.startedAt.nanoseconds / 1000000);
     const elapsedSinceStart = now - startedAtMillis;
     const newAccumulatedTime = timerState.accumulatedTime + elapsedSinceStart;
 
-    await updateDoc(timerStateRef, {
+    const updateData = {
       status: 'paused',
       accumulatedTime: newAccumulatedTime,
+    };
+
+    updateDoc(timerStateRef, updateData).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: timerStateRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
     });
   };
 
   const stop = async (finalStatus: 'stopped' | 'completed') => {
     if (!firestore || !user || !timerStateRef) return;
-    if (!timerState) { // If no state, nothing to stop
+    if (!timerState) {
         if (intervalRef.current) clearInterval(intervalRef.current);
         setDisplayTime(mode === 'pomodoro' ? customDuration * 60 : 0);
         return;
@@ -179,9 +193,8 @@ export function useTimer() {
 
     const finalDurationSeconds = Math.round(finalElapsedTime / 1000);
 
-    // Only save session if it's longer than a few seconds
     if (finalDurationSeconds > 5) {
-        const focusScore = 100; // Placeholder, real logic can be more complex
+        const focusScore = 100;
 
         const sessionPayload: Omit<Session, 'id'> = {
             userId: user.uid,
@@ -190,24 +203,38 @@ export function useTimer() {
             startTime: new Date(timerState.sessionStartTime.seconds * 1000).toISOString(),
             endTime: new Date().toISOString(),
             duration: finalDurationSeconds,
-            pauseCount: 0, // This needs to be tracked properly if required
+            pauseCount: 0,
             status: finalStatus,
             focusScore: focusScore,
         }
         
-        await addDoc(collection(firestore, 'sessions'), sessionPayload);
+        addDoc(collection(firestore, 'sessions'), sessionPayload).catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: `sessions/(new_id)`,
+                operation: 'create',
+                requestResourceData: sessionPayload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
 
-        toastRef.current({
+        toast({
             title: "Session Saved!",
             description: `You studied for ${Math.round(finalDurationSeconds / 60)} minutes.`,
         });
     }
 
-    // Reset the timer state in Firestore
-    await updateDoc(timerStateRef, {
+    const resetState = {
         status: 'stopped',
         accumulatedTime: 0,
         startedAt: null,
+    };
+    updateDoc(timerStateRef, resetState).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: timerStateRef.path,
+            operation: 'update',
+            requestResourceData: resetState,
+        });
+        errorEmitter.emit('permission-error', permissionError);
     });
   };
   
