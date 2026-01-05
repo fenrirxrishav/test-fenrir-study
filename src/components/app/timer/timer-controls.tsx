@@ -7,6 +7,7 @@ interface TimerControlsProps {
   isPaused: boolean;
   onStart: () => void;
   onPause: () => void;
+  onStop: () => void;
   onReset: () => void;
 }
 
@@ -15,25 +16,26 @@ export function TimerControls({
   isPaused,
   onStart,
   onPause,
-  onReset,
+  onStop,
+  onReset
 }: TimerControlsProps) {
   return (
     <div className="flex items-center justify-center gap-4">
-      <Button variant="outline" size="icon" className="h-12 w-12 rounded-full" onClick={onReset} aria-label="Reset Timer">
+      <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full" onClick={onReset} aria-label="Reset Timer">
         <RotateCcw className="h-5 w-5" />
       </Button>
       
       {!isActive || isPaused ? (
-        <Button size="icon" className="h-20 w-20 rounded-full shadow-lg" onClick={onStart} aria-label="Start or Resume Timer">
+        <Button size="lg" className="h-20 w-20 rounded-full shadow-lg" onClick={onStart} aria-label="Start or Resume Timer">
           <Play className="h-8 w-8 fill-current" />
         </Button>
       ) : (
-        <Button size="icon" className="h-20 w-20 rounded-full shadow-lg" onClick={onPause} aria-label="Pause Timer">
+        <Button size="lg" className="h-20 w-20 rounded-full shadow-lg" onClick={onPause} aria-label="Pause Timer">
           <Pause className="h-8 w-8 fill-current" />
         </Button>
       )}
 
-      <Button variant="destructive" size="icon" className="h-12 w-12 rounded-full" onClick={onReset} aria-label="Stop Timer">
+      <Button variant="destructive" size="icon" className="h-12 w-12 rounded-full" onClick={onStop} aria-label="Stop Timer">
         <Square className="h-5 w-5 fill-current" />
       </Button>
     </div>

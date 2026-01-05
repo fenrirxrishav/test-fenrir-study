@@ -1,31 +1,27 @@
 
-import { Card, CardContent } from "@/components/ui/card";
-
 interface TimerDisplayProps {
   time: number;
-  subjectName?: string;
 }
 
 const formatTime = (totalSeconds: number) => {
   const roundedSeconds = Math.floor(totalSeconds);
   const seconds = roundedSeconds % 60;
   const minutes = Math.floor(roundedSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    return `${String(hours)}:${String(minutes % 60).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export function TimerDisplay({ time, subjectName }: TimerDisplayProps) {
+export function TimerDisplay({ time }: TimerDisplayProps) {
   return (
-    <Card className="w-full max-w-md border-2 shadow-lg">
-        <CardContent className="p-8 flex flex-col items-center justify-center">
-            <span 
-              className="font-mono font-bold text-8xl md:text-9xl text-foreground tracking-tighter"
-            >
-              {formatTime(time)}
-            </span>
-            <span className="mt-4 text-lg font-medium text-muted-foreground truncate max-w-full px-4 text-center">
-              {subjectName || "No Subject"}
-            </span>
-        </CardContent>
-    </Card>
+    <div 
+        className="font-mono font-bold text-8xl md:text-9xl text-foreground tracking-tighter"
+    >
+        {formatTime(time)}
+    </div>
   );
 }

@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, serverTimestamp, updateDoc, setDoc, addDoc, collection, DocumentData, Timestamp } from 'firebase/firestore';
+import { doc, serverTimestamp, updateDoc, setDoc, addDoc, collection, Timestamp } from 'firebase/firestore';
 import { TimerState, Session } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -11,10 +11,15 @@ import { Button } from '@/components/ui/button';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
-// Helper to convert Firestore Timestamp to milliseconds
-const toMillis = (timestamp: Timestamp | null | undefined): number => {
-  if (!timestamp) return 0;
-  return timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
+// Helper to convert Firestore Timestamp to milliseconds safely
+const toMillis = (timestamp: any): number => {
+  if (timestamp instanceof Timestamp) {
+    return timestamp.toMillis();
+  }
+  if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
+    return timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000;
+  }
+  return 0;
 };
 
 export function useTimer() {
@@ -26,28 +31,30 @@ export function useTimer() {
   const [displayTime, setDisplayTime] = useState(0); 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  const timerStateRef = useMemo(() => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'timerStates', user.uid);
+  const timerStateRef = useRef(user && firestore ? doc(firestore, 'timerStates', user.uid) : null);
+
+  useEffect(() => {
+    timerStateRef.current = user && firestore ? doc(firestore, 'timerStates', user.uid) : null;
   }, [user, firestore]);
 
-  const { data: timerState, loading: timerStateLoading } = useDoc<TimerState>(timerStateRef);
+  const { data: timerState, loading: timerStateLoading } = useDoc<TimerState>(timerStateRef.current);
 
-  // Local state for UI configuration, synced from Firestore
   const [customDuration, setCustomDuration] = useState(25);
   const [mode, setMode] = useState<'pomodoro' | 'stopwatch'>('pomodoro');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
-  // Sync local UI config with server state when it loads
   useEffect(() => {
     if (timerState) {
         setMode(timerState.mode);
         setSelectedSubjectId(timerState.subjectId);
-        if (timerState.mode === 'pomodoro') {
+        if (timerState.mode === 'pomodoro' && timerState.initialDuration > 0) {
             setCustomDuration(timerState.initialDuration / 60);
         }
+    } else {
+      // When timerState is null/undefined (e.g., new user), set display to default
+      setDisplayTime(mode === 'pomodoro' ? customDuration * 60 : 0);
     }
-  }, [timerState]);
+  }, [timerState, mode, customDuration]);
 
   const calculateDisplayTime = useCallback(() => {
     if (!timerState) {
@@ -55,8 +62,10 @@ export function useTimer() {
       return;
     }
     
+    const now = Date.now();
+    
     if (timerState.status === 'stopped') {
-        setDisplayTime(mode === 'pomodoro' ? timerState.initialDuration : 0);
+        setDisplayTime(timerState.mode === 'pomodoro' ? timerState.initialDuration : 0);
         return;
     }
 
@@ -66,49 +75,44 @@ export function useTimer() {
         return;
     }
 
-    if (timerState.status === 'running' && timerState.startedAt) {
-        const now = Date.now();
+    if (timerState.status === 'running') {
         const startedAtMillis = toMillis(timerState.startedAt);
-        const elapsedSinceStart = now - startedAtMillis;
+        if (startedAtMillis === 0) return;
+
+        const elapsedSinceStart = (now - startedAtMillis) / 1000;
         const totalElapsedTime = timerState.accumulatedTime + elapsedSinceStart;
 
         if (timerState.mode === 'pomodoro') {
-            const remaining = Math.max(0, timerState.initialDuration * 1000 - totalElapsedTime) / 1000;
+            const remaining = Math.max(0, timerState.initialDuration - totalElapsedTime);
             setDisplayTime(remaining);
-
             if (remaining <= 0) {
               stop('completed');
             }
         } else {
-            setDisplayTime(totalElapsedTime / 1000);
+            setDisplayTime(totalElapsedTime);
         }
     }
   }, [timerState, mode, customDuration]);
-
 
   useEffect(() => {
     if (intervalRef.current) {
         clearInterval(intervalRef.current);
     }
-    // Only set an interval if the timer is running
     if (timerState?.status === 'running') {
-        // Run once immediately to prevent delay
         calculateDisplayTime(); 
         intervalRef.current = setInterval(calculateDisplayTime, 1000);
     } else {
-        // If not running, just calculate the display time once (for paused/stopped states)
         calculateDisplayTime();
     }
-    // Cleanup interval on unmount
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [timerState, calculateDisplayTime]); // Rerun when timerState or calculation logic changes
+  }, [timerState, calculateDisplayTime]);
 
   const start = async () => {
-    if (!firestore || !user || !timerStateRef) {
+    if (!firestore || !user || !timerStateRef.current) {
         toast({
             title: "You're not logged in",
             description: 'Log in to start the timer and track your progress.',
@@ -126,34 +130,30 @@ export function useTimer() {
     }
     
     let accumulatedTime = 0;
-    let newMode = mode;
-    let newDuration = mode === 'pomodoro' ? customDuration * 60 : 0;
-    let sessionStartTime: any = serverTimestamp();
+    let sessionStartTime = serverTimestamp();
+    let initialDuration = mode === 'pomodoro' ? customDuration * 60 : 0;
 
-    // If resuming from a paused state, carry over the accumulated time and original start time
     if(timerState && timerState.status === 'paused') {
         accumulatedTime = timerState.accumulatedTime;
-        newMode = timerState.mode;
-        newDuration = timerState.initialDuration;
         sessionStartTime = timerState.sessionStartTime;
+        initialDuration = timerState.initialDuration;
     }
     
     const newState = {
       userId: user.uid,
       status: 'running',
-      mode: newMode,
-      initialDuration: newDuration,
-      accumulatedTime: accumulatedTime,
-      startedAt: serverTimestamp(), // Mark the new run start time
-      sessionStartTime: sessionStartTime, // Preserve the original session start time
+      mode,
+      initialDuration,
+      accumulatedTime,
+      startedAt: serverTimestamp(),
+      sessionStartTime,
       subjectId: selectedSubjectId,
     };
 
-    // Use `setDoc` with `merge: true` to handle both creation of a new timerState and updating an existing one
-    setDoc(timerStateRef, newState, { merge: true }).catch(serverError => {
+    setDoc(timerStateRef.current, newState, { merge: true }).catch(serverError => {
         const permissionError = new FirestorePermissionError({
-            path: timerStateRef.path,
-            operation: 'update', // or 'create' - merge can do both
+            path: timerStateRef.current!.path,
+            operation: 'update',
             requestResourceData: newState,
         });
         errorEmitter.emit('permission-error', permissionError);
@@ -161,21 +161,24 @@ export function useTimer() {
   };
 
   const pause = async () => {
-    if (!timerState || timerState.status !== 'running' || !timerState.startedAt || !firestore || !timerStateRef) return;
+    if (!timerState || timerState.status !== 'running' || !firestore || !timerStateRef.current) return;
+
+    const startedAtMillis = toMillis(timerState.startedAt);
+    if (startedAtMillis === 0) return;
 
     const now = Date.now();
-    const startedAtMillis = toMillis(timerState.startedAt);
-    const elapsedSinceStart = now - startedAtMillis;
+    const elapsedSinceStart = (now - startedAtMillis) / 1000;
     const newAccumulatedTime = timerState.accumulatedTime + elapsedSinceStart;
 
     const updateData = {
       status: 'paused',
       accumulatedTime: newAccumulatedTime,
+      startedAt: null,
     };
 
-    updateDoc(timerStateRef, updateData).catch(serverError => {
+    updateDoc(timerStateRef.current, updateData).catch(serverError => {
         const permissionError = new FirestorePermissionError({
-            path: timerStateRef.path,
+            path: timerStateRef.current!.path,
             operation: 'update',
             requestResourceData: updateData,
         });
@@ -184,30 +187,27 @@ export function useTimer() {
   };
 
   const stop = async (finalStatus: 'stopped' | 'completed') => {
-    if (!firestore || !user || !timerStateRef) return;
+    if (!firestore || !user || !timerStateRef.current) return;
+    
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
-    // If there's no timer state, there's nothing to stop. Just reset the display.
     if (!timerState) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
         setDisplayTime(mode === 'pomodoro' ? customDuration * 60 : 0);
         return;
     }
     
     let finalElapsedTime = timerState.accumulatedTime;
-    // If it was running when stopped, add the last running portion.
-    if(timerState.status === 'running' && timerState.startedAt) {
-      const now = Date.now();
+    if(timerState.status === 'running') {
       const startedAtMillis = toMillis(timerState.startedAt);
-      const elapsedSinceStart = now - startedAtMillis;
-      finalElapsedTime += elapsedSinceStart;
+      if (startedAtMillis > 0) {
+        const elapsedSinceStart = (Date.now() - startedAtMillis) / 1000;
+        finalElapsedTime += elapsedSinceStart;
+      }
     }
 
-    const finalDurationSeconds = Math.round(finalElapsedTime / 1000);
+    const finalDurationSeconds = Math.round(finalElapsedTime);
 
-    // Only save the session if it's longer than a few seconds
-    if (finalDurationSeconds > 5 && timerState.sessionStartTime) {
-        const focusScore = 100; // Placeholder
-
+    if (finalDurationSeconds > 5 && toMillis(timerState.sessionStartTime) > 0) {
         const sessionPayload: Omit<Session, 'id'> = {
             userId: user.uid,
             subjectId: timerState.subjectId,
@@ -217,7 +217,7 @@ export function useTimer() {
             duration: finalDurationSeconds,
             pauseCount: 0, // Placeholder
             status: finalStatus,
-            focusScore: focusScore,
+            focusScore: 100, // Placeholder
         }
         
         addDoc(collection(firestore, 'sessions'), sessionPayload).catch(serverError => {
@@ -229,53 +229,69 @@ export function useTimer() {
             errorEmitter.emit('permission-error', permissionError);
         });
 
-        toast({
-            title: "Session Saved!",
-            description: `You studied for ${Math.round(finalDurationSeconds / 60)} minutes.`,
-        });
+        if (finalStatus === 'completed' || finalStatus === 'stopped') {
+          toast({
+              title: "Session Saved!",
+              description: `You studied for ${Math.round(finalDurationSeconds / 60)} minutes.`,
+          });
+        }
     }
 
-    // Reset the timer state on the server
+    reset();
+  };
+
+  const reset = () => {
+    if (!firestore || !timerStateRef.current) return;
+     if (intervalRef.current) clearInterval(intervalRef.current);
+
     const resetState = {
         status: 'stopped',
         accumulatedTime: 0,
         startedAt: null,
-        // Keep subject and mode for next session
+        initialDuration: mode === 'pomodoro' ? customDuration * 60 : 0
     };
-    updateDoc(timerStateRef, resetState).catch(serverError => {
+    updateDoc(timerStateRef.current, resetState).catch(serverError => {
         const permissionError = new FirestorePermissionError({
-            path: timerStateRef.path,
+            path: timerStateRef.current!.path,
             operation: 'update',
             requestResourceData: resetState,
         });
         errorEmitter.emit('permission-error', permissionError);
     });
-  };
+  }
   
-  // These handlers should only work if the timer is idle.
   const handleModeChange = (newMode: 'pomodoro' | 'stopwatch') => {
-    if (timerState && timerState.status !== 'stopped') return;
-    setMode(newMode);
+    if (isIdle) {
+      setMode(newMode);
+      if (timerStateRef.current) {
+         updateDoc(timerStateRef.current, { mode: newMode });
+      }
+    }
   }
   
   const handleSubjectChange = (subjectId: string) => {
-    if (timerState && timerState.status !== 'stopped') return;
-    setSelectedSubjectId(subjectId);
+     if (isIdle) {
+      setSelectedSubjectId(subjectId);
+       if (timerStateRef.current) {
+         updateDoc(timerStateRef.current, { subjectId: subjectId });
+      }
+    }
   };
   
   const handleDurationChange = (newDuration: number) => {
-    if (timerState && timerState.status !== 'stopped') return;
-    // Basic validation
-    if(newDuration > 0 && newDuration <= 180) {
-        setCustomDuration(newDuration);
+    if (isIdle) {
+      if(newDuration > 0 && newDuration <= 180) {
+          setCustomDuration(newDuration);
+          if (timerStateRef.current) {
+            updateDoc(timerStateRef.current, { initialDuration: newDuration * 60 });
+          }
+      }
     }
   };
-
 
   const isActive = timerState?.status === 'running';
   const isPaused = timerState?.status === 'paused';
   const isIdle = !timerState || timerState.status === 'stopped';
-  const totalDuration = timerState?.initialDuration || customDuration * 60;
   
   return {
     displayTime,
@@ -286,10 +302,10 @@ export function useTimer() {
     isPaused,
     isIdle,
     timerStateLoading,
-    totalDuration,
     start,
     pause,
     stop,
+    reset,
     handleModeChange,
     handleSubjectChange,
     handleDurationChange,

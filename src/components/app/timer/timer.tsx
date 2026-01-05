@@ -7,32 +7,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Palette, PanelLeft, PanelTop } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { AddSubjectDialog } from './add-subject-dialog';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { addDoc, collection, query, serverTimestamp, where } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
-import { StyleSelector } from './style-selector';
 import type { Subject } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { DigitalFace } from './faces/digital-face';
-import { RingFace } from './faces/ring-face';
-import { AnimatePresence, motion } from 'framer-motion';
+import { TimerDisplay } from './timer-display';
 import { TimerControls } from './timer-controls';
-
-type LayoutMode = 'side' | 'bottom';
-export type TimerFaceId = 'digital' | 'ring';
+import { Card, CardContent } from '@/components/ui/card';
 
 const modeSettings: { [key in 'pomodoro' | 'stopwatch']: { label: string } } = {
   pomodoro: { label: 'Pomodoro' },
   stopwatch: { label: 'Stopwatch' },
 };
-
-const faces: { id: TimerFaceId, component: React.FC<any> }[] = [
-    { id: 'digital', component: DigitalFace },
-    { id: 'ring', component: RingFace },
-]
 
 export default function Timer() {
   const { user } = useUser();
@@ -40,10 +30,7 @@ export default function Timer() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [layout, setLayout] = useState<LayoutMode>('bottom');
   const [isAddSubjectOpen, setAddSubjectOpen] = useState(false);
-  const [isStyleSelectorOpen, setStyleSelectorOpen] = useState(false);
-  const [activeFace, setActiveFace] = useState<TimerFaceId>('ring');
   
   const subjectsQuery = useMemo(() => {
       return user && firestore ? query(collection(firestore, 'subjects'), where('userId', '==', user.uid), where('archived', '==', false)) : null;
@@ -58,11 +45,10 @@ export default function Timer() {
     isActive,
     isPaused,
     isIdle,
-    timerStateLoading,
-    totalDuration,
     start,
     pause,
     stop,
+    reset,
     handleModeChange,
     handleSubjectChange,
     handleDurationChange,
@@ -104,126 +90,75 @@ export default function Timer() {
     }
   };
 
-  const layoutIcon = layout === 'side' ? <PanelTop /> : <PanelLeft />;
-
-  const ActiveFaceComponent = faces.find(f => f.id === activeFace)?.component || RingFace;
-
-  const controlPanel = (
-    <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.4 }}
-        className="flex w-full flex-col items-center justify-center gap-6"
-    >
-        <Tabs value={mode} onValueChange={(val) => handleModeChange(val as 'pomodoro' | 'stopwatch')} className="w-full max-w-xs">
-            <TabsList className={cn("grid w-full grid-cols-2", !isIdle && "pointer-events-none opacity-50")}>
-            {Object.entries(modeSettings).map(([key, value]) => (
-                <TabsTrigger key={key} value={key} disabled={!isIdle}>
-                {value.label}
-                </TabsTrigger>
-            ))}
-            </TabsList>
-        </Tabs>
-
-        {mode === 'pomodoro' && (
-            <div className='flex items-center justify-center gap-2'>
-            <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration:</label>
-            <Input
-                id="custom-duration"
-                type="number"
-                value={customDuration}
-                onChange={(e) => handleDurationChange(Number(e.target.value))}
-                className="w-20 h-9"
-                disabled={!isIdle}
-            />
-                <span className="text-sm text-muted-foreground">min</span>
-            </div>
-        )}
-        <div className="flex gap-2 w-full max-w-xs">
-            <Select onValueChange={handleSubjectChange} disabled={!isIdle || !user} value={selectedSubjectId || ""}>
-                <SelectTrigger className="shadow-sm">
-                <SelectValue placeholder={user ? (subjectsLoading ? "Loading subjects..." : "Select a subject") : "Login to see subjects"} />
-                </SelectTrigger>
-                <SelectContent>
-                {user && subjects && subjects.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                    <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: subject.color }}></span>
-                        {subject.name}
-                    </div>
-                    </SelectItem>
-                ))}
-                </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" onClick={() => setAddSubjectOpen(true)} disabled={!isIdle} className="shadow-sm">
-                <PlusCircle className="h-4 w-4" />
-            </Button>
-        </div>
-
-        <TimerControls
-        isActive={isActive}
-        isPaused={isPaused}
-        onStart={start}
-        onPause={pause}
-        onReset={() => stop('stopped')}
-        />
-    </motion.div>
-  );
-
-
   return (
     <>
-        <div className={cn("relative flex h-full w-full flex-col items-center justify-center gap-8 md:gap-12 p-4 pt-20", {
-            "md:flex-row": layout === 'side',
-            "md:flex-col": layout === 'bottom'
-        })}>
-            <div className="absolute top-4 right-4 flex items-center z-10">
-                <Button variant="ghost" size="icon" onClick={() => setStyleSelectorOpen(true)} className="hidden md:inline-flex">
-                    <Palette />
-                </Button>
-                 <Button variant="ghost" size="icon" onClick={() => setLayout(prev => prev === 'side' ? 'bottom' : 'side')} className="hidden md:inline-flex">
-                    {layoutIcon}
-                </Button>
-            </div>
-        
-            <div className="w-full max-w-sm aspect-square flex items-center justify-center">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={activeFace}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                        className="w-full h-full"
-                    >
-                        <ActiveFaceComponent 
-                            time={displayTime} 
-                            subjectName={selectedSubject?.name || (user ? 'Select Subject' : 'Login to save session')}
-                            mode={mode}
-                            totalDuration={totalDuration}
-                            isActive={isActive}
-                        />
-                    </motion.div>
-                </AnimatePresence>
-            </div>
+      <Card className="w-full max-w-lg border-2 shadow-lg">
+        <CardContent className="p-6 md:p-8 flex flex-col items-center justify-center gap-8">
             
-            <div className={cn("flex w-full items-center justify-center md:w-auto", {
-                "md:max-w-sm": layout === 'side'
-            })}>
-               {controlPanel}
+            <Tabs value={mode} onValueChange={(val) => handleModeChange(val as 'pomodoro' | 'stopwatch')} className="w-full max-w-xs">
+                <TabsList className={cn("grid w-full grid-cols-2", !isIdle && "pointer-events-none opacity-50")}>
+                {Object.entries(modeSettings).map(([key, value]) => (
+                    <TabsTrigger key={key} value={key} disabled={!isIdle}>
+                    {value.label}
+                    </TabsTrigger>
+                ))}
+                </TabsList>
+            </Tabs>
+
+            <div className="flex flex-col items-center gap-2">
+              <TimerDisplay time={displayTime} />
+              <div className="flex gap-2 items-center w-full max-w-xs">
+                  <Select onValueChange={handleSubjectChange} disabled={!isIdle || !user} value={selectedSubjectId || ""}>
+                      <SelectTrigger className="shadow-sm">
+                      <SelectValue placeholder={user ? (subjectsLoading ? "Loading..." : "Select subject") : "Login to select subject"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                      {user && subjects && subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                          <div className="flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: subject.color }}></span>
+                              {subject.name}
+                          </div>
+                          </SelectItem>
+                      ))}
+                      </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" onClick={() => setAddSubjectOpen(true)} disabled={!isIdle} className="shadow-sm flex-shrink-0">
+                      <PlusCircle className="h-4 w-4" />
+                  </Button>
+              </div>
             </div>
-        </div>
-        <AddSubjectDialog
-            isOpen={isAddSubjectOpen}
-            onOpenChange={setAddSubjectOpen}
-            onAddSubject={handleAddSubject}
-        />
-        <StyleSelector
-            isOpen={isStyleSelectorOpen}
-            onOpenChange={setStyleSelectorOpen}
-            activeFace={activeFace}
-            onFaceChange={setActiveFace}
-        />
+
+            {mode === 'pomodoro' && (
+                <div className='flex items-center justify-center gap-2'>
+                <label htmlFor="custom-duration" className='text-sm font-medium text-muted-foreground'>Duration:</label>
+                <Input
+                    id="custom-duration"
+                    type="number"
+                    value={customDuration}
+                    onChange={(e) => handleDurationChange(Number(e.target.value))}
+                    className="w-20 h-9"
+                    disabled={!isIdle}
+                />
+                    <span className="text-sm text-muted-foreground">min</span>
+                </div>
+            )}
+
+            <TimerControls
+              isActive={isActive}
+              isPaused={isPaused}
+              onStart={start}
+              onPause={pause}
+              onStop={() => stop('stopped')}
+              onReset={reset}
+            />
+        </CardContent>
+      </Card>
+      <AddSubjectDialog
+          isOpen={isAddSubjectOpen}
+          onOpenChange={setAddSubjectOpen}
+          onAddSubject={handleAddSubject}
+      />
     </>
   );
 }
