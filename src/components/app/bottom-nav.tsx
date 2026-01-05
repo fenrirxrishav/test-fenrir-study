@@ -25,24 +25,20 @@ export default function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 h-20 md:hidden">
-        <div className="w-full h-full bg-background/80 backdrop-blur-lg border-t">
-          <div className="grid h-full grid-cols-5 max-w-lg mx-auto">
-            {routes.map((route) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-200',
-                  pathname === route.href ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-                )}
-              >
-                <route.icon className="h-5 w-5" />
-                <span>{route.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-    </div>
+      <div className="grid h-full grid-cols-5 max-w-lg mx-auto">
+        {routes.map((route) => (
+          <Link
+            key={route.href}
+            href={route.href}
+            className={cn(
+              'relative flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors duration-200',
+              pathname === route.href ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+            )}
+          >
+            <route.icon className="h-5 w-5" />
+            <span>{route.label}</span>
+          </Link>
+        ))}
+      </div>
   );
 }
